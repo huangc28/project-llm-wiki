@@ -62,16 +62,22 @@ class ProjectWikiInitTests(unittest.TestCase):
             output = result.stdout + result.stderr
 
             self.assertEqual(0, result.returncode, output)
-            self.assertTrue((repo / ".llm-wiki" / "README.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "index.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "raw" / "README.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "raw" / "curated" / "README.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "features" / "ideas.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "summaries" / "repo-overview.md").exists())
-            self.assertTrue((repo / ".llm-wiki" / "architecture" / ".gitkeep").exists())
-            self.assertTrue((repo / ".llm-wiki" / "domain" / ".gitkeep").exists())
-            self.assertTrue((repo / ".llm-wiki" / "decisions" / ".gitkeep").exists())
-            self.assertTrue((repo / ".llm-wiki" / "operations" / ".gitkeep").exists())
+            expected_files = [
+                ".llm-wiki/README.md",
+                ".llm-wiki/AGENTS.md",
+                ".llm-wiki/index.md",
+                ".llm-wiki/log.md",
+                ".llm-wiki/raw/README.md",
+                ".llm-wiki/raw/curated/README.md",
+                ".llm-wiki/features/ideas.md",
+                ".llm-wiki/summaries/repo-overview.md",
+                ".llm-wiki/architecture/.gitkeep",
+                ".llm-wiki/domain/.gitkeep",
+                ".llm-wiki/decisions/.gitkeep",
+                ".llm-wiki/operations/.gitkeep",
+            ]
+            for relative_path in expected_files:
+                self.assertTrue((repo / relative_path).is_file(), relative_path)
             self.assertFalse((nested / ".llm-wiki").exists())
             self.assertIn("Resolved git root:", output)
             self.assertIn("Created paths:", output)
@@ -123,6 +129,55 @@ class ProjectWikiInitTests(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertIn(".llm-wiki/features: expected directory, found file", output)
             self.assertFalse((wiki / "README.md").exists())
+
+    def test_dry_run_conflict_reports_plan_and_conflicts_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            wiki = repo / ".llm-wiki"
+            wiki.mkdir()
+            (wiki / "features").write_text("not a directory\n", encoding="utf-8")
+
+            result = self.run_helper(repo, "init", "--dry-run")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("Would create paths:", output)
+            self.assertIn("Would skip existing paths:", output)
+            self.assertIn("Conflicts:", output)
+            self.assertIn(".llm-wiki/features: expected directory, found file", output)
+            self.assertFalse((wiki / "README.md").exists())
+
+    def test_init_rejects_symlinked_required_paths_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            outside = repo.parent / "outside-wiki"
+            outside.mkdir()
+            wiki = repo / ".llm-wiki"
+            wiki.symlink_to(outside, target_is_directory=True)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(".llm-wiki: expected real directory, found symlink", output)
+            self.assertFalse((outside / "README.md").exists())
+
+    def test_init_rejects_broken_symlinked_required_file_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            wiki = repo / ".llm-wiki"
+            wiki.mkdir()
+            (wiki / "README.md").symlink_to(repo.parent / "outside-readme.md")
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(".llm-wiki/README.md: expected real file, found symlink", output)
+            self.assertFalse((repo.parent / "outside-readme.md").exists())
 
     def test_clean_repo_status_shows_llm_wiki_files(self):
         with tempfile.TemporaryDirectory() as tmp:

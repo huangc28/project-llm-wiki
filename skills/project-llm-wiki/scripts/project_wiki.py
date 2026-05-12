@@ -152,20 +152,40 @@ def build_init_file_contents(
     return contents, found_sources, skipped_sources
 
 
+def path_is_under(path: pathlib.Path, root: pathlib.Path) -> bool:
+    try:
+        path.resolve(strict=False).relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     conflicts: list[str] = []
     for relative_path in REQUIRED_DIRECTORIES:
         path = git_root / relative_path
-        if path.exists() and not path.is_dir():
+        if path.is_symlink():
+            conflicts.append(
+                f"{relative_path.as_posix()}: expected real directory, found symlink"
+            )
+        elif path.exists() and not path.is_dir():
             conflicts.append(
                 f"{relative_path.as_posix()}: expected directory, found file"
             )
+        elif path.exists() and not path_is_under(path, git_root):
+            conflicts.append(f"{relative_path.as_posix()}: resolves outside git root")
     for relative_path in REQUIRED_FILES:
         path = git_root / relative_path
-        if path.exists() and not path.is_file():
+        if path.is_symlink():
+            conflicts.append(
+                f"{relative_path.as_posix()}: expected real file, found symlink"
+            )
+        elif path.exists() and not path.is_file():
             conflicts.append(
                 f"{relative_path.as_posix()}: expected file, found directory"
             )
+        elif path.exists() and not path_is_under(path, git_root):
+            conflicts.append(f"{relative_path.as_posix()}: resolves outside git root")
     return conflicts
 
 
@@ -263,9 +283,6 @@ def run_init(args) -> int:
     print(f"Resolved git root: {git_root}")
     conflicts = find_init_conflicts(git_root)
     missing_index_links = collect_missing_index_links(git_root)
-    if conflicts:
-        print_text_section("Conflicts:", conflicts)
-        return 2
 
     template_contents, missing_templates = load_template_contents()
     file_contents, found_sources, skipped_sources = build_init_file_contents(
@@ -278,8 +295,15 @@ def run_init(args) -> int:
         print_source_status(found_sources, skipped_sources)
         if missing_index_links:
             print_text_section("Missing recommended index links:", missing_index_links)
+        if conflicts:
+            print_text_section("Conflicts:", conflicts)
+            return 2
         print("Next: review .llm-wiki/index.md")
         return 0
+
+    if conflicts:
+        print_text_section("Conflicts:", conflicts)
+        return 2
 
     if missing_templates:
         print_text_section("Template assets missing:", missing_templates)
