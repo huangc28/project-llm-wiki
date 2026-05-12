@@ -50,9 +50,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Implement git-root detection and init safety behavior
-- [ ] 02-02-PLAN.md - Create `.llm-wiki/` templates and seed page generation
-- [ ] 02-03-PLAN.md - Add clean repo and idempotency fixture tests
+- [ ] 02-03-PLAN.md - Wave 1: create Wave 0 RED validation fixtures before implementation
+- [ ] 02-01-PLAN.md - Wave 2: implement git-root detection and init safety behavior
+- [ ] 02-02-PLAN.md - Wave 3: create `.llm-wiki/` templates and seed page generation
 
 ### Phase 3: Lint and Safety Checks
 
