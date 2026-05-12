@@ -47,6 +47,11 @@ GENERATED_FILES = {
     pathlib.Path(".llm-wiki/decisions/.gitkeep"),
     pathlib.Path(".llm-wiki/operations/.gitkeep"),
 }
+TEMPLATE_FILES = tuple(
+    relative_path
+    for relative_path in REQUIRED_FILES
+    if relative_path not in GENERATED_FILES
+)
 
 
 def planned_command(name: str, phase: str) -> int:
@@ -86,27 +91,65 @@ def find_candidate_child_repos(cwd: pathlib.Path) -> list[pathlib.Path]:
 
 
 def template_root() -> pathlib.Path:
-    return (
-        pathlib.Path(__file__).resolve().parent.parent
-        / "assets"
-        / "templates"
-        / "llm-wiki"
+    return pathlib.Path(__file__).resolve().parents[1] / "assets" / "templates" / "llm-wiki"
+
+
+def load_template_contents() -> tuple[dict[str, str], list[str]]:
+    root = template_root()
+    contents: dict[str, str] = {}
+    missing: list[str] = []
+    for target_path in TEMPLATE_FILES:
+        template_relative_path = target_path.relative_to(WIKI_ROOT)
+        template_path = root / template_relative_path
+        if template_path.is_file():
+            contents[target_path.as_posix()] = template_path.read_text(
+                encoding="utf-8"
+            )
+        else:
+            missing.append(template_relative_path.as_posix())
+    return contents, missing
+
+
+def format_source_status(sources: list[str]) -> str:
+    return ", ".join(sources) if sources else "none"
+
+
+def build_repo_overview(repo_root: pathlib.Path) -> tuple[str, list[str], list[str]]:
+    found: list[str] = []
+    skipped: list[str] = []
+    for source_name in ("README.md", "AGENTS.md"):
+        if (repo_root / source_name).is_file():
+            found.append(source_name)
+        else:
+            skipped.append(source_name)
+
+    content = "\n".join(
+        [
+            "# Repo Overview",
+            "",
+            "This page was seeded during project-wiki init.",
+            "",
+            f"Sources found: {format_source_status(found)}",
+            f"Sources skipped: {format_source_status(skipped)}",
+            "",
+            "Current repository files are authoritative when they disagree with this wiki.",
+            "",
+        ]
     )
+    return content, found, skipped
 
 
-def template_asset_for(relative_path: pathlib.Path) -> pathlib.Path | None:
-    if relative_path in GENERATED_FILES:
-        return None
-    return template_root() / relative_path.relative_to(WIKI_ROOT)
-
-
-def find_missing_template_assets() -> list[pathlib.Path]:
-    missing: list[pathlib.Path] = []
-    for relative_path in REQUIRED_FILES:
-        asset = template_asset_for(relative_path)
-        if asset is not None and not asset.is_file():
-            missing.append(asset)
-    return missing
+def build_init_file_contents(
+    repo_root: pathlib.Path, template_contents: dict[str, str]
+) -> tuple[dict[str, str], list[str], list[str]]:
+    repo_overview, found_sources, skipped_sources = build_repo_overview(repo_root)
+    contents = dict(template_contents)
+    contents[".llm-wiki/summaries/repo-overview.md"] = repo_overview
+    contents[".llm-wiki/architecture/.gitkeep"] = ""
+    contents[".llm-wiki/domain/.gitkeep"] = ""
+    contents[".llm-wiki/decisions/.gitkeep"] = ""
+    contents[".llm-wiki/operations/.gitkeep"] = ""
+    return contents, found_sources, skipped_sources
 
 
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
@@ -156,32 +199,8 @@ def create_file_if_missing(path: pathlib.Path, content: str) -> bool:
     return True
 
 
-def build_generated_file_content(relative_path: pathlib.Path) -> str:
-    if relative_path.name == ".gitkeep":
-        return ""
-    if relative_path == pathlib.Path(".llm-wiki/summaries/repo-overview.md"):
-        return textwrap.dedent(
-            """\
-            # Repo Overview
-
-            This page is created by project-wiki init and populated by the
-            template content plan.
-
-            Current repository files are authoritative when they disagree with this wiki.
-            """
-        )
-    return ""
-
-
-def read_init_file_content(relative_path: pathlib.Path) -> str:
-    asset = template_asset_for(relative_path)
-    if asset is None:
-        return build_generated_file_content(relative_path)
-    return asset.read_text(encoding="utf-8")
-
-
 def apply_init_plan(
-    git_root: pathlib.Path,
+    git_root: pathlib.Path, file_contents: dict[str, str]
 ) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
     created: list[pathlib.Path] = []
     skipped: list[pathlib.Path] = []
@@ -196,7 +215,7 @@ def apply_init_plan(
 
     for relative_path in REQUIRED_FILES:
         path = git_root / relative_path
-        content = read_init_file_content(relative_path)
+        content = file_contents[relative_path.as_posix()]
         if create_file_if_missing(path, content):
             created.append(relative_path)
         else:
@@ -223,6 +242,11 @@ def print_text_section(heading: str, items: list[str]) -> None:
         print(f"- {item}")
 
 
+def print_source_status(found: list[str], skipped: list[str]) -> None:
+    print(f"Sources found: {format_source_status(found)}")
+    print(f"Skipped sources: {format_source_status(skipped)}")
+
+
 def run_init(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -243,23 +267,28 @@ def run_init(args) -> int:
         print_text_section("Conflicts:", conflicts)
         return 2
 
+    template_contents, missing_templates = load_template_contents()
+    file_contents, found_sources, skipped_sources = build_init_file_contents(
+        git_root, template_contents
+    )
     would_create, would_skip = collect_init_paths(git_root)
     if args.dry_run:
         print_path_section("Would create paths:", would_create)
         print_path_section("Would skip existing paths:", would_skip)
+        print_source_status(found_sources, skipped_sources)
         if missing_index_links:
             print_text_section("Missing recommended index links:", missing_index_links)
         print("Next: review .llm-wiki/index.md")
         return 0
 
-    missing_templates = find_missing_template_assets()
     if missing_templates:
-        print_path_section("Template assets missing:", missing_templates)
+        print_text_section("Template assets missing:", missing_templates)
         return 2
 
-    created, skipped = apply_init_plan(git_root)
+    created, skipped = apply_init_plan(git_root, file_contents)
     print_path_section("Created paths:", created)
     print_path_section("Skipped existing paths:", skipped)
+    print_source_status(found_sources, skipped_sources)
     if missing_index_links:
         print_text_section("Missing recommended index links:", missing_index_links)
     print("Next: review .llm-wiki/index.md")
