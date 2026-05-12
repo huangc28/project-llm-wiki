@@ -485,21 +485,19 @@ Planner note: keep this page light; init must not perform deep interpretation. [
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Shallow immediate-child repo discovery is enough for Phase 2 parent-workspace failure output. [ASSUMED] | Open Questions | If users run init from deeper workspace parents, candidate output may omit intended repos; init still must not write. |
-| A2 | `init --dry-run` should return nonzero when conflicts would block a real run and zero when no conflicts exist. [ASSUMED] | Open Questions | If downstream tools expect dry-run to always return zero, scripts may need adjustment. |
+| A1 | Shallow immediate-child repo discovery is enough for Phase 2 parent-workspace failure output. [RESOLVED] | Open Questions | If users run init from deeper workspace parents, candidate output may omit intended repos; init still must not write. |
+| A2 | `init --dry-run` should return nonzero when conflicts would block a real run and zero when no conflicts exist. [RESOLVED] | Open Questions | If downstream tools expect dry-run to always return zero, scripts may need adjustment. |
 | A3 | Research remains current for about 30 days for this stable stdlib/Git architecture. [ASSUMED] | Metadata | If Python or Git behavior changes sooner, planner may need to recheck docs before implementation. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How deep should child repo candidate discovery search?**
    - What we know: D-02 says init may list candidate child git repos when discoverable. [VERIFIED: .planning/phases/02-init-and-wiki-templates/02-CONTEXT.md]
-   - What's unclear: The context does not lock search depth or hidden-directory handling. [VERIFIED: .planning/phases/02-init-and-wiki-templates/02-CONTEXT.md]
-   - Recommendation: Use shallow immediate-child discovery for Phase 2 and keep output concise. [ASSUMED]
+   - Resolution: Use shallow immediate-child discovery for Phase 2 and keep output concise. This satisfies D-02 without adding recursive workspace scanning or target selection. [RESOLVED]
 
 2. **Should dry-run return success when conflicts exist?**
    - What we know: D-20 requires dry-run to report would-create, would-skip, and conflicts without writing. [VERIFIED: .planning/phases/02-init-and-wiki-templates/02-CONTEXT.md]
-   - What's unclear: The exact exit code is not locked. [VERIFIED: .planning/phases/02-init-and-wiki-templates/02-CONTEXT.md]
-   - Recommendation: Return nonzero when conflicts would block a real run; return zero when dry-run has no conflicts. [ASSUMED]
+   - Resolution: Return nonzero when conflicts would block a real run; return zero when dry-run has no conflicts. This keeps dry-run scriptable while preserving conflict visibility. [RESOLVED]
 
 ## Environment Availability
 
