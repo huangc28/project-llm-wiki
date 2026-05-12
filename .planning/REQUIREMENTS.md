@@ -9,9 +9,9 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Skill Package
 
-- [ ] **SKILL-01**: User can install or reference a reusable Project LLM Wiki skill package with documented project wiki operations.
+- [x] **SKILL-01**: User can install or reference a reusable Project LLM Wiki skill package with documented project wiki operations.
 - [ ] **SKILL-02**: User can run the skill safely from inside a git repository without requiring external runtime dependencies beyond the selected standard-library implementation.
-- [ ] **SKILL-03**: User can inspect templates, scripts, and references in the skill package without reading a single large monolithic prompt.
+- [x] **SKILL-03**: User can inspect templates, scripts, and references in the skill package without reading a single large monolithic prompt.
 
 ### Initialization
 
@@ -106,9 +106,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SKILL-01 | Phase 1 | Pending |
+| SKILL-01 | Phase 1 | Complete |
 | SKILL-02 | Phase 1 | Pending |
-| SKILL-03 | Phase 1 | Pending |
+| SKILL-03 | Phase 1 | Complete |
 | INIT-01 | Phase 2 | Pending |
 | INIT-02 | Phase 2 | Pending |
 | INIT-03 | Phase 2 | Pending |

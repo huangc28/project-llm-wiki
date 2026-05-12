@@ -32,7 +32,7 @@ Project LLM Wiki will ship as a reusable skill package that creates and maintain
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Define package layout, command surface, and source-of-truth location
+- [x] 01-01: Define package layout, command surface, and source-of-truth location
 - [ ] 01-02: Scaffold reusable skill files, references, and baseline tests
 
 ### Phase 2: Init and Wiki Templates

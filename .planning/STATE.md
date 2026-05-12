@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-05-12T15:04:04.989Z"
+last_activity: 2026-05-12
+progress:
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
+---
+
 # Project State
 
 ## Project Reference
@@ -10,15 +26,16 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 1 of 5 (Skill Package Foundation)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-05-12 - Created PROJECT.md, config, research, requirements, and roadmap.
+Plan: 1 of 2 in current phase
+Status: Ready to execute
+Last activity: 2026-05-12
 
-Progress: [----------] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: N/A
 - Total execution time: 0 hours
@@ -30,8 +47,11 @@ Progress: [----------] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: none
 - Trend: N/A
+
+| Phase 01 P01 | 9 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -43,6 +63,8 @@ Recent decisions affecting current work:
 - [Init]: Use `.llm-wiki/` as the git-tracked repo-local durable knowledge layer.
 - [Init]: Keep `.planning/`, Linear, OMX, and workflow files responsible for volatile task state.
 - [Init]: Start with a reusable skill package, then validate in a clean repo and `peasydeal_be`.
+- [Phase 01]: This repository is the working source of truth for the reusable skill package during Phase 1. — Plan 01-01 created README.md and package-contract.md to keep Phase 1 work repo-local and avoid global skill directory mutation.
+- [Phase 01]: The package exposes one project-llm-wiki skill with documented project-wiki-* modes before alias skills are considered. — Plan 01-01 fixed the command surface in SKILL.md and references/command-surface.md so later phases can implement stable mode names.
 
 ### Pending Todos
 
@@ -50,8 +72,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1 must decide whether this repo or the vault-managed `skills/` directory is the source of truth for the reusable skill.
-- Phase 1 must decide whether the command surface is one `project-llm-wiki` skill with modes or separate `project-wiki-*` skills.
+None
 
 ## Deferred Items
 
@@ -64,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-12
-Stopped at: Roadmap created; Phase 1 ready to plan.
+Last session: 2026-05-12T15:01:44.930Z
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
