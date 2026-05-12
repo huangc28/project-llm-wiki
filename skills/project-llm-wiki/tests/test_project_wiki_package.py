@@ -1,4 +1,6 @@
 from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 
@@ -7,6 +9,14 @@ PACKAGE = ROOT / "skills" / "project-llm-wiki"
 
 
 class ProjectWikiPackageTests(unittest.TestCase):
+    def run_helper(self, *args):
+        return subprocess.run(
+            [sys.executable, str(PACKAGE / "scripts" / "project_wiki.py"), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
     def test_skill_file_documents_modes(self):
         skill = (PACKAGE / "SKILL.md").read_text()
 
@@ -24,6 +34,46 @@ class ProjectWikiPackageTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text()
 
         self.assertIn("skills/project-llm-wiki/SKILL.md", readme)
+
+    def test_helper_help_exits_zero(self):
+        result = self.run_helper("--help")
+
+        self.assertEqual(0, result.returncode)
+        self.assertIn("Repo-local .llm-wiki helper for Project LLM Wiki", result.stdout)
+
+    def test_helper_version_output(self):
+        result = self.run_helper("version")
+
+        self.assertEqual(0, result.returncode)
+        self.assertIn("project-llm-wiki 0.1.0-foundation", result.stdout)
+
+    def test_helper_init_is_planned_not_mutating(self):
+        result = self.run_helper("init")
+        output = result.stdout + result.stderr
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("project-wiki-init is planned for Phase 2", output)
+
+    def test_helper_imports_only_allowed_modules(self):
+        allowed = {"argparse", "pathlib", "sys", "textwrap"}
+        script = (PACKAGE / "scripts" / "project_wiki.py").read_text()
+        imported = set()
+
+        for line in script.splitlines():
+            if line.startswith("import "):
+                module = line.removeprefix("import ").split()[0].split(".")[0]
+                imported.add(module)
+            elif line.startswith("from "):
+                module = line.removeprefix("from ").split()[0].split(".")[0]
+                imported.add(module)
+
+        self.assertTrue(imported)
+        self.assertLessEqual(imported, allowed)
+
+    def test_template_readme_defers_final_templates(self):
+        template_readme = (PACKAGE / "assets" / "templates" / "README.md").read_text()
+
+        self.assertIn("Final .llm-wiki/ templates are implemented in Phase 2.", template_readme)
 
 
 if __name__ == "__main__":
