@@ -15,10 +15,10 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Initialization
 
-- [ ] **INIT-01**: User can initialize `.llm-wiki/` in the actual git root detected by `git rev-parse --show-toplevel`.
-- [ ] **INIT-02**: User receives a clear failure or target-selection message when running init outside a git repository or from a multi-repo parent that is not the intended repo.
+- [x] **INIT-01**: User can initialize `.llm-wiki/` in the actual git root detected by `git rev-parse --show-toplevel`.
+- [x] **INIT-02**: User receives a clear failure or target-selection message when running init outside a git repository or from a multi-repo parent that is not the intended repo.
 - [ ] **INIT-03**: User can initialize a missing `.llm-wiki/` skeleton with `README.md`, `AGENTS.md`, `index.md`, `log.md`, `raw/README.md`, `raw/curated/`, `architecture/`, `domain/`, `decisions/`, `operations/`, `features/`, and `summaries/`.
-- [ ] **INIT-04**: User can rerun init without overwriting existing wiki notes or duplicating generated sections.
+- [x] **INIT-04**: User can rerun init without overwriting existing wiki notes or duplicating generated sections.
 - [ ] **INIT-05**: User can seed concise starting pages from existing repo files such as `README.md`, package manifests, `go.mod`, `pyproject.toml`, and `AGENTS.md` when those files exist.
 - [ ] **INIT-06**: User can see `.llm-wiki/` files in `git status` after init unless the target repo already ignores them.
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SKILL-01 | Phase 1 | Complete |
 | SKILL-02 | Phase 1 | Complete |
 | SKILL-03 | Phase 1 | Complete |
-| INIT-01 | Phase 2 | Pending |
-| INIT-02 | Phase 2 | Pending |
+| INIT-01 | Phase 2 | Complete |
+| INIT-02 | Phase 2 | Complete |
 | INIT-03 | Phase 2 | Pending |
-| INIT-04 | Phase 2 | Pending |
+| INIT-04 | Phase 2 | Complete |
 | INIT-05 | Phase 2 | Pending |
 | INIT-06 | Phase 2 | Pending |
 | RAW-01 | Phase 2 | Pending |
