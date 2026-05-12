@@ -1,14 +1,20 @@
 # Project LLM Wiki Templates
 
-## Phase 1 Status
+## Inventory
 
-Final .llm-wiki/ templates are implemented in Phase 2.
+This directory contains the inspectable default template assets used by `project-wiki init`.
 
-This directory exists in Phase 1 so the package has a stable asset location before template content is designed and tested.
+- `llm-wiki/README.md` - wiki purpose and durable knowledge boundaries.
+- `llm-wiki/AGENTS.md` - agent-facing rules for reading and trusting the wiki.
+- `llm-wiki/index.md` - default navigation across wiki categories.
+- `llm-wiki/log.md` - durable query and update log guidance.
+- `llm-wiki/raw/README.md` - raw source allow/deny policy.
+- `llm-wiki/raw/curated/README.md` - curated raw source requirements.
+- `llm-wiki/features/ideas.md` - durable idea capture page.
 
-## Phase 2 Ownership
+## Ownership
 
-Phase 2 owns the final `.llm-wiki/` skeleton templates, idempotent init behavior, and raw source policy files.
+The Project LLM Wiki package owns these default `.llm-wiki/` skeleton templates, idempotent init behavior, and raw source policy files.
 
 Template changes must stay inside the Project LLM Wiki package boundary unless a later plan explicitly adds target repository initialization behavior.
 

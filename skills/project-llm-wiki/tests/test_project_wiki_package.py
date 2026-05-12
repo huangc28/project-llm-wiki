@@ -80,10 +80,12 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertTrue(imported)
         self.assertLessEqual(imported, allowed)
 
-    def test_template_readme_defers_final_templates(self):
+    def test_template_readme_lists_llm_wiki_inventory(self):
         template_readme = (PACKAGE / "assets" / "templates" / "README.md").read_text()
 
-        self.assertIn("Final .llm-wiki/ templates are implemented in Phase 2.", template_readme)
+        self.assertIn("llm-wiki/README.md", template_readme)
+        self.assertIn("llm-wiki/raw/curated/README.md", template_readme)
+        self.assertIn("Templates must not contain secrets", template_readme)
 
 
 if __name__ == "__main__":
