@@ -282,8 +282,6 @@ def run_init(args) -> int:
 
     print(f"Resolved git root: {git_root}")
     conflicts = find_init_conflicts(git_root)
-    missing_index_links = collect_missing_index_links(git_root)
-
     template_contents, missing_templates = load_template_contents()
     file_contents, found_sources, skipped_sources = build_init_file_contents(
         git_root, template_contents
@@ -293,11 +291,15 @@ def run_init(args) -> int:
         print_path_section("Would create paths:", would_create)
         print_path_section("Would skip existing paths:", would_skip)
         print_source_status(found_sources, skipped_sources)
-        if missing_index_links:
-            print_text_section("Missing recommended index links:", missing_index_links)
         if conflicts:
             print_text_section("Conflicts:", conflicts)
             return 2
+        if missing_templates:
+            print_text_section("Template assets missing:", missing_templates)
+            return 2
+        missing_index_links = collect_missing_index_links(git_root)
+        if missing_index_links:
+            print_text_section("Missing recommended index links:", missing_index_links)
         print("Next: review .llm-wiki/index.md")
         return 0
 
@@ -313,6 +315,7 @@ def run_init(args) -> int:
     print_path_section("Created paths:", created)
     print_path_section("Skipped existing paths:", skipped)
     print_source_status(found_sources, skipped_sources)
+    missing_index_links = collect_missing_index_links(git_root)
     if missing_index_links:
         print_text_section("Missing recommended index links:", missing_index_links)
     print("Next: review .llm-wiki/index.md")
@@ -326,8 +329,9 @@ def build_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
-            Phase 1 exposes the helper surface without mutating repositories.
-            Later phases implement init, lint, query, and ingest behavior.
+            project-wiki init creates a .llm-wiki skeleton in the current Git root.
+            Use project-wiki init --dry-run to preview changes without writing files.
+            lint, query, and ingest remain planned for later phases.
             """
         ),
     )

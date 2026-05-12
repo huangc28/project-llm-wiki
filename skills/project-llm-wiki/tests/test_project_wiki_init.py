@@ -166,6 +166,24 @@ class ProjectWikiInitTests(unittest.TestCase):
             self.assertIn(".llm-wiki: expected real directory, found symlink", output)
             self.assertFalse((outside / "README.md").exists())
 
+    def test_init_rejects_symlinked_wiki_before_reading_index(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            repo = parent / "repo"
+            outside = parent / "outside-wiki"
+            repo.mkdir()
+            outside.mkdir()
+            self.init_repo(repo)
+            (outside / "index.md").write_bytes(b"\xff\xfeoutside index\n")
+            (repo / ".llm-wiki").symlink_to(outside, target_is_directory=True)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn(".llm-wiki: expected real directory, found symlink", output)
+            self.assertNotIn("Traceback", output)
+
     def test_init_rejects_broken_symlinked_required_file_before_writing(self):
         with tempfile.TemporaryDirectory() as tmp:
             parent = Path(tmp)
