@@ -50,9 +50,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Implement git-root detection and init safety behavior
-- [ ] 02-02: Create `.llm-wiki/` templates and seed page generation
-- [ ] 02-03: Add clean repo and idempotency fixture tests
+- [ ] 02-01-PLAN.md - Implement git-root detection and init safety behavior
+- [ ] 02-02-PLAN.md - Create `.llm-wiki/` templates and seed page generation
+- [ ] 02-03-PLAN.md - Add clean repo and idempotency fixture tests
 
 ### Phase 3: Lint and Safety Checks
 
