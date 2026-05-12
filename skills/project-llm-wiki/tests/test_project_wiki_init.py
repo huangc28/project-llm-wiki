@@ -124,6 +124,110 @@ class ProjectWikiInitTests(unittest.TestCase):
             self.assertIn(".llm-wiki/features: expected directory, found file", output)
             self.assertFalse((wiki / "README.md").exists())
 
+    def test_clean_repo_status_shows_llm_wiki_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            status = self.git_status_short(repo)
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(0, status.returncode, status.stdout + status.stderr)
+            self.assertTrue(
+                "?? .llm-wiki/" in status.stdout or ".llm-wiki/" in status.stdout,
+                status.stdout,
+            )
+            self.assertTrue((repo / ".llm-wiki" / "README.md").exists())
+            self.assertTrue((repo / ".llm-wiki" / "index.md").exists())
+            self.assertTrue((repo / ".llm-wiki" / "raw" / "README.md").exists())
+            self.assertTrue((repo / ".llm-wiki" / "raw" / "curated" / "README.md").exists())
+            self.assertTrue((repo / ".llm-wiki" / "features" / "ideas.md").exists())
+            self.assertTrue((repo / ".llm-wiki" / "summaries" / "repo-overview.md").exists())
+
+    def test_rerun_preserves_existing_files_and_reports_missing_index_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+
+            first = self.run_helper(repo, "init")
+            first_output = first.stdout + first.stderr
+            self.assertEqual(0, first.returncode, first_output)
+
+            index = repo / ".llm-wiki" / "index.md"
+            overview = repo / ".llm-wiki" / "summaries" / "repo-overview.md"
+            index.write_text("# Custom Index\n\nSentinel\n", encoding="utf-8")
+            overview.write_text("# Custom Overview\n\nSentinel\n", encoding="utf-8")
+
+            rerun = self.run_helper(repo, "init")
+            output = rerun.stdout + rerun.stderr
+
+            self.assertEqual(0, rerun.returncode, output)
+            self.assertIn("Sentinel", index.read_text(encoding="utf-8"))
+            self.assertIn("Sentinel", overview.read_text(encoding="utf-8"))
+            self.assertIn("Skipped existing paths:", output)
+            self.assertIn("Missing recommended index links:", output)
+            self.assertIn("[[features/ideas]]", output)
+            self.assertIn("[[summaries/repo-overview]]", output)
+
+    def test_repo_overview_uses_only_readme_and_agents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            (repo / "README.md").write_text("# Test Repo\n", encoding="utf-8")
+            (repo / "AGENTS.md").write_text("# Agent Instructions\n", encoding="utf-8")
+            (repo / "package.json").write_text("{}\n", encoding="utf-8")
+            (repo / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+            (repo / "go.mod").write_text("module example.com/test\n", encoding="utf-8")
+            (repo / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            overview = repo / ".llm-wiki" / "summaries" / "repo-overview.md"
+
+            self.assertEqual(0, result.returncode, output)
+            overview_text = overview.read_text(encoding="utf-8")
+            self.assertIn("Sources found: README.md, AGENTS.md", overview_text)
+            self.assertNotIn("package.json", overview_text)
+            self.assertNotIn("pyproject.toml", overview_text)
+            self.assertNotIn("go.mod", overview_text)
+            self.assertNotIn("Cargo.toml", overview_text)
+
+    def test_raw_policy_and_ideas_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            raw_readme = (repo / ".llm-wiki" / "raw" / "README.md").read_text(
+                encoding="utf-8"
+            )
+            curated_readme = (
+                repo / ".llm-wiki" / "raw" / "curated" / "README.md"
+            ).read_text(encoding="utf-8")
+            ideas = (repo / ".llm-wiki" / "features" / "ideas.md").read_text(
+                encoding="utf-8"
+            )
+
+            self.assertIn(
+                "secrets, credentials, auth tokens, private customer data, full logs, database exports, generated dumps",
+                raw_readme,
+            )
+            self.assertIn("de-secreted", curated_readme)
+            self.assertIn("intentionally selected", curated_readme)
+            self.assertIn("small sources or excerpts", curated_readme)
+            self.assertIn("2026-05-13-api-notes.md", curated_readme)
+            self.assertIn("Thought", ideas)
+            self.assertIn("Why it might matter", ideas)
+            self.assertIn("Current leaning", ideas)
+            self.assertIn("Not decided", ideas)
+            self.assertIn("Related links", ideas)
+            self.assertIn("not a roadmap, backlog, or active task-state store", ideas)
+
 
 if __name__ == "__main__":
     unittest.main()
