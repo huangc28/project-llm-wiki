@@ -106,52 +106,52 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SKILL-01 | TBD | Pending |
-| SKILL-02 | TBD | Pending |
-| SKILL-03 | TBD | Pending |
-| INIT-01 | TBD | Pending |
-| INIT-02 | TBD | Pending |
-| INIT-03 | TBD | Pending |
-| INIT-04 | TBD | Pending |
-| INIT-05 | TBD | Pending |
-| INIT-06 | TBD | Pending |
-| RAW-01 | TBD | Pending |
-| RAW-02 | TBD | Pending |
-| RAW-03 | TBD | Pending |
-| QUERY-01 | TBD | Pending |
-| QUERY-02 | TBD | Pending |
-| QUERY-03 | TBD | Pending |
-| QUERY-04 | TBD | Pending |
-| INGEST-01 | TBD | Pending |
-| INGEST-02 | TBD | Pending |
-| INGEST-03 | TBD | Pending |
-| INGEST-04 | TBD | Pending |
-| INGEST-05 | TBD | Pending |
-| LINT-01 | TBD | Pending |
-| LINT-02 | TBD | Pending |
-| LINT-03 | TBD | Pending |
-| LINT-04 | TBD | Pending |
-| LINT-05 | TBD | Pending |
-| LINT-06 | TBD | Pending |
-| LINT-07 | TBD | Pending |
-| AGENT-01 | TBD | Pending |
-| AGENT-02 | TBD | Pending |
-| AGENT-03 | TBD | Pending |
-| AGENT-04 | TBD | Pending |
-| AGENT-05 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| TEST-07 | TBD | Pending |
+| SKILL-01 | Phase 1 | Pending |
+| SKILL-02 | Phase 1 | Pending |
+| SKILL-03 | Phase 1 | Pending |
+| INIT-01 | Phase 2 | Pending |
+| INIT-02 | Phase 2 | Pending |
+| INIT-03 | Phase 2 | Pending |
+| INIT-04 | Phase 2 | Pending |
+| INIT-05 | Phase 2 | Pending |
+| INIT-06 | Phase 2 | Pending |
+| RAW-01 | Phase 2 | Pending |
+| RAW-02 | Phase 2 | Pending |
+| RAW-03 | Phase 2 | Pending |
+| QUERY-01 | Phase 4 | Pending |
+| QUERY-02 | Phase 4 | Pending |
+| QUERY-03 | Phase 4 | Pending |
+| QUERY-04 | Phase 4 | Pending |
+| INGEST-01 | Phase 4 | Pending |
+| INGEST-02 | Phase 4 | Pending |
+| INGEST-03 | Phase 4 | Pending |
+| INGEST-04 | Phase 4 | Pending |
+| INGEST-05 | Phase 4 | Pending |
+| LINT-01 | Phase 3 | Pending |
+| LINT-02 | Phase 3 | Pending |
+| LINT-03 | Phase 3 | Pending |
+| LINT-04 | Phase 3 | Pending |
+| LINT-05 | Phase 3 | Pending |
+| LINT-06 | Phase 3 | Pending |
+| LINT-07 | Phase 3 | Pending |
+| AGENT-01 | Phase 5 | Pending |
+| AGENT-02 | Phase 5 | Pending |
+| AGENT-03 | Phase 5 | Pending |
+| AGENT-04 | Phase 5 | Pending |
+| AGENT-05 | Phase 5 | Pending |
+| TEST-01 | Phase 2 | Pending |
+| TEST-02 | Phase 2 | Pending |
+| TEST-03 | Phase 4 | Pending |
+| TEST-04 | Phase 3 | Pending |
+| TEST-05 | Phase 3 | Pending |
+| TEST-06 | Phase 5 | Pending |
+| TEST-07 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total
-- Mapped to phases: 0
-- Unmapped: 39 pending roadmap
+- v1 requirements: 40 total
+- Mapped to phases: 40
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 after initialization*
+*Last updated: 2026-05-12 after roadmap creation*
