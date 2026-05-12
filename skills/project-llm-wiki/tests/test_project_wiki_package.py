@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -47,12 +48,21 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("project-llm-wiki 0.1.0-foundation", result.stdout)
 
-    def test_helper_init_is_planned_not_mutating(self):
-        result = self.run_helper("init")
-        output = result.stdout + result.stderr
+    def test_helper_init_refuses_non_git_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            result = subprocess.run(
+                [sys.executable, str(PACKAGE / "scripts" / "project_wiki.py"), "init"],
+                cwd=tmp_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            output = result.stdout + result.stderr
 
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("project-wiki-init is planned for Phase 2", output)
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("No git repository found for current directory.", output)
+            self.assertFalse((tmp_path / ".llm-wiki").exists())
 
     def test_helper_imports_only_allowed_modules(self):
         allowed = {"argparse", "pathlib", "sys", "textwrap"}
