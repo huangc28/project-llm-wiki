@@ -150,10 +150,12 @@ class ProjectWikiInitTests(unittest.TestCase):
 
     def test_init_rejects_symlinked_required_paths_before_writing(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            self.init_repo(repo)
-            outside = repo.parent / "outside-wiki"
+            parent = Path(tmp)
+            repo = parent / "repo"
+            outside = parent / "outside-wiki"
+            repo.mkdir()
             outside.mkdir()
+            self.init_repo(repo)
             wiki = repo / ".llm-wiki"
             wiki.symlink_to(outside, target_is_directory=True)
 
@@ -166,18 +168,21 @@ class ProjectWikiInitTests(unittest.TestCase):
 
     def test_init_rejects_broken_symlinked_required_file_before_writing(self):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
+            parent = Path(tmp)
+            repo = parent / "repo"
+            outside_file = parent / "outside-readme.md"
+            repo.mkdir()
             self.init_repo(repo)
             wiki = repo / ".llm-wiki"
             wiki.mkdir()
-            (wiki / "README.md").symlink_to(repo.parent / "outside-readme.md")
+            (wiki / "README.md").symlink_to(outside_file)
 
             result = self.run_helper(repo, "init")
             output = result.stdout + result.stderr
 
             self.assertNotEqual(0, result.returncode)
             self.assertIn(".llm-wiki/README.md: expected real file, found symlink", output)
-            self.assertFalse((repo.parent / "outside-readme.md").exists())
+            self.assertFalse(outside_file.exists())
 
     def test_clean_repo_status_shows_llm_wiki_files(self):
         with tempfile.TemporaryDirectory() as tmp:
