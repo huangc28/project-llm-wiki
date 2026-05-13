@@ -53,6 +53,24 @@ class ProjectWikiPackageTests(unittest.TestCase):
 
         self.assertIn("skills/project-llm-wiki/SKILL.md", readme)
 
+    def test_readme_documents_user_getting_started_flow(self):
+        readme = (ROOT / "README.md").read_text()
+
+        for expected in (
+            "Quick Start",
+            "$project-wiki-init",
+            "$project-wiki-lint",
+            "$project-wiki-query",
+            "$project-wiki-ingest",
+            "CLI Fallback",
+            "project_wiki.py init --dry-run",
+            "Safety Rules",
+            "Python standard library only",
+        ):
+            self.assertIn(expected, readme)
+        self.assertNotIn("Current phase: Phase 1", readme)
+        self.assertNotIn("Later phases add deterministic init", readme)
+
     def test_helper_help_exits_zero(self):
         result = self.run_helper("--help")
 
