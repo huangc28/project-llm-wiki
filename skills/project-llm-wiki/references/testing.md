@@ -10,6 +10,14 @@ Run the targeted Phase 3 lint suite with:
 
 `python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_lint.py`
 
+Run the targeted Phase 4 query suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_query.py`
+
+Run the targeted Phase 4 ingest suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_ingest.py`
+
 ## Phase 2 Validation Contract
 
 Phase 2 tests verify the init behavior before production implementation turns the
@@ -55,6 +63,43 @@ The validation suite covers:
   `remediation`.
 - read-only assertions that compare wiki file bytes before and after warning and
   error lint runs.
+
+## Phase 4 Validation Contract
+
+Phase 4 tests verify the query and ingest loop through clean temporary Git
+repositories that run `project-wiki init`, seed wiki pages or source material,
+and then run `project-wiki query` or `project-wiki ingest` through the same
+subprocess boundary users will run.
+
+The query validation suite covers:
+
+- QUERY-01: `project-wiki query` reads `.llm-wiki/index.md` first and returns
+  candidate `[[wikilink]]` pages from the index.
+- QUERY-02: query support output states that direct claims require
+  `[[wikilink]]` citations and does not emit final semantic answers.
+- QUERY-03: not-covered query flow records consulted pages and suggests a source
+  type to ingest next.
+- QUERY-04: query runs append concise `.llm-wiki/log.md` entries with pages
+  consulted and key insight.
+- TEST-03: seeded query fixtures prove cited-answer support, JSON packet output,
+  and log append behavior without making Python synthesize final answers.
+
+The ingest validation suite covers:
+
+- INGEST-01: text, file, and URL-provenance curated sources are accepted, while
+  unsafe raw material is rejected.
+- INGEST-02: ingest prefers existing page updates before creating new pages.
+- INGEST-03: summary pages require explicit cross-cutting intent via
+  `--summary-page`.
+- INGEST-04: touched pages receive provenance, new pages update `index.md`, and
+  ingest appends `log.md`.
+- INGEST-05: full logs, full transcripts, active task state, execution
+  checkpoints, secrets, private data, oversized sources, and parent-directory
+  page targets are rejected.
+
+video sources require transcript, summary, or curated notes before core ingest.
+`$watch-video` can be a local preprocessing helper, but it is not required by
+Project LLM Wiki.
 
 ## No Dependency Rule
 

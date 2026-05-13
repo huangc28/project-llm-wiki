@@ -48,6 +48,38 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("--json", result.stdout)
 
+    def test_query_help_documents_phase_4_flags(self):
+        result = self.run_helper("query", "--help")
+
+        self.assertEqual(0, result.returncode)
+        for expected in (
+            "--json",
+            "--consulted",
+            "--key-insight",
+            "--not-covered",
+            "--suggest-source",
+        ):
+            self.assertIn(expected, result.stdout)
+
+    def test_ingest_help_documents_phase_4_flags(self):
+        result = self.run_helper("ingest", "--help")
+
+        self.assertEqual(0, result.returncode)
+        for expected in (
+            "--text",
+            "--file",
+            "--url",
+            "--title",
+            "--target-page",
+            "--new-page",
+            "--new-page-reason",
+            "--key-idea",
+            "--preserve-raw",
+            "--summary-page",
+            "--json",
+        ):
+            self.assertIn(expected, result.stdout)
+
     def test_command_surface_documents_completed_lint_contract(self):
         command_surface = (PACKAGE / "references" / "command-surface.md").read_text()
 
@@ -58,6 +90,21 @@ class ProjectWikiPackageTests(unittest.TestCase):
             r"severity.*code.*path.*message.*remediation",
         )
         self.assertNotIn("Lint and safety checks: Phase 3", command_surface)
+
+    def test_command_surface_documents_completed_query_and_ingest_contract(self):
+        command_surface = (PACKAGE / "references" / "command-surface.md").read_text()
+
+        for expected in (
+            "Implemented support mode for reading `.llm-wiki/index.md` first",
+            "project-wiki query QUESTION",
+            "project-wiki query QUESTION --consulted PAGE --key-insight TEXT",
+            "Implemented mode for updating existing wiki pages",
+            "project-wiki ingest --text TEXT --title TITLE --target-page PAGE --key-idea TEXT",
+            "project-wiki ingest --url URL --text CURATED_TEXT --title TITLE --target-page PAGE --key-idea TEXT",
+            "watch-video",
+        ):
+            self.assertIn(expected, command_surface)
+        self.assertNotIn("Query and ingest loop: Phase 4", command_surface)
 
     def test_testing_reference_documents_phase_3_validation_contract(self):
         testing_reference = (PACKAGE / "references" / "testing.md").read_text()
@@ -72,6 +119,22 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "stale pages",
             "repo path drift",
             "read-only",
+        ):
+            self.assertIn(expected, testing_reference)
+
+    def test_testing_reference_documents_phase_4_validation_contract(self):
+        testing_reference = (PACKAGE / "references" / "testing.md").read_text()
+
+        for expected in (
+            "Phase 4 Validation Contract",
+            "test_project_wiki_query.py",
+            "test_project_wiki_ingest.py",
+            "QUERY-01",
+            "QUERY-04",
+            "INGEST-01",
+            "INGEST-05",
+            "TEST-03",
+            "video sources require transcript, summary, or curated notes",
         ):
             self.assertIn(expected, testing_reference)
 
