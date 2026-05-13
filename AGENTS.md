@@ -116,6 +116,16 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 <!-- GSD:workflow-end -->
 
+<!-- PROJECT-LLM-WIKI:CODEX-SUBAGENTS:START -->
+## Codex Native Subagent Authorization
+
+For GSD workflows in this repository, the user explicitly authorizes Codex native subagents for workflow `Task(...)` steps when they improve throughput, preserve intended role separation, or match the workflow's documented orchestration model.
+
+When a GSD workflow calls `Task(subagent_type="gsd-*", prompt=...)`, map it to `spawn_agent(agent_type="gsd-*", message=...)` when the matching Codex agent is available. The lead agent still owns integration, verification, and final reporting.
+
+If Codex runtime policy rejects automatic spawning in a given turn, fall back to inline execution and state that this was a runtime limitation, not a missing project authorization.
+<!-- PROJECT-LLM-WIKI:CODEX-SUBAGENTS:END -->
+
 
 
 <!-- GSD:profile-start -->
