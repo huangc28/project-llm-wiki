@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-05-13T09:51:05.970Z"
+last_updated: "2026-05-13T10:53:00.000Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 Phase: 04 (query-and-ingest-loop) — EXECUTING
 Plan: 3 of 3
 Status: Phase complete — ready for verification
-Last activity: 2026-05-13
+Last activity: 2026-05-13 - Completed quick task 260513-q3w: Expose project-wiki mode aliases as Codex dollar-trigger skills
 
 Progress: [██████████] 100%
 
@@ -95,6 +95,12 @@ None yet.
 ### Blockers/Concerns
 
 None
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260513-q3w | Expose project-wiki mode aliases as Codex dollar-trigger skills | 2026-05-13 | 849d58d | [260513-q3w-expose-project-wiki-mode-aliases-as-code](./quick/260513-q3w-expose-project-wiki-mode-aliases-as-code/) |
 
 ## Deferred Items
 
