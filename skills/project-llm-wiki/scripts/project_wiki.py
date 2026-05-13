@@ -837,13 +837,22 @@ def run_lint(args) -> int:
         return 2
 
     wiki_files, inventory_findings = collect_wiki_files(git_root)
-    markdown_files = [path for path in wiki_files if path.suffix == ".md"]
+    readable_wiki_files: list[pathlib.Path] = []
+    read_error_findings: list[dict[str, str]] = []
+    for wiki_file in wiki_files:
+        _text, read_error = read_wiki_text(wiki_file, git_root)
+        if read_error is not None:
+            read_error_findings.append(read_error)
+        else:
+            readable_wiki_files.append(wiki_file)
+    markdown_files = [path for path in readable_wiki_files if path.suffix == ".md"]
     findings = [
         *inventory_findings,
+        *read_error_findings,
         *check_broken_wikilinks(git_root, markdown_files),
         *check_index_coverage(git_root, markdown_files),
-        *check_raw_file_sizes(git_root, wiki_files),
-        *check_secret_like_content(git_root, wiki_files),
+        *check_raw_file_sizes(git_root, readable_wiki_files),
+        *check_secret_like_content(git_root, readable_wiki_files),
         *check_stale_pages(git_root, markdown_files),
         *check_repo_path_drift(git_root, markdown_files),
     ]

@@ -294,6 +294,33 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn(".llm-wiki/features/locked.md", output)
             self.assertNotIn("Traceback", output)
 
+    def test_lint_reports_unreadable_markdown_file_once_without_index_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            locked = repo / ".llm-wiki" / "features" / "locked.md"
+            locked.write_text("[[features/ideas]]\n", encoding="utf-8")
+            locked.chmod(0)
+            try:
+                result = self.run_helper(repo, "lint", "--json")
+            finally:
+                locked.chmod(0o644)
+            payload = json.loads(result.stdout)
+            locked_findings = [
+                finding
+                for finding in payload["findings"]
+                if finding["path"] == ".llm-wiki/features/locked.md"
+            ]
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", result.stderr)
+            self.assertEqual(1, len(locked_findings), payload)
+            self.assertEqual("unreadable_wiki_file", locked_findings[0]["code"])
+            self.assertNotIn(
+                "missing_index_entry",
+                {finding["code"] for finding in payload["findings"]},
+            )
+
     def test_lint_ignores_general_markdown_links(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
