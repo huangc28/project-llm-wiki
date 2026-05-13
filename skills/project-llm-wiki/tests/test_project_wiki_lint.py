@@ -439,6 +439,136 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: secret_like_content", output)
             self.assertIn("code: stale_page", output)
 
+    def test_lint_reports_missing_repo_path_from_inline_code_span(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nImplementation lives in `src/missing.py`.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: missing_repo_path", output)
+            self.assertIn(".llm-wiki/features/ideas.md", output)
+            self.assertIn("src/missing.py", output)
+
+    def test_lint_reports_missing_repo_path_from_fenced_code_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\n```text\nsrc/missing.py\n```\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: missing_repo_path", output)
+            self.assertIn("src/missing.py", output)
+
+    def test_lint_ignores_repo_path_like_text_in_plain_prose(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nPlain prose mentions src/missing.py as an example.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("missing_repo_path", output)
+
+    def test_lint_ignores_outside_repo_path_drift_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nIgnored: `../outside.txt`, `/etc/passwd`, and `~/secret.txt`.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("missing_repo_path", output)
+
+    def test_lint_ignores_outside_repo_paths_in_plain_prose(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nPlain prose can mention /tmp/example.txt or ../outside.txt.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("missing_repo_path", output)
+
+    def test_lint_does_not_warn_for_existing_repo_path_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            source = repo / "src" / "app.py"
+            source.parent.mkdir()
+            source.write_text("print('ok')\n", encoding="utf-8")
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nExisting implementation: `src/app.py`.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("missing_repo_path", output)
+
+    def test_warning_only_repo_path_drift_exits_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nOutdated implementation: `docs/missing.md`.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: missing_repo_path", output)
+
 
 if __name__ == "__main__":
     unittest.main()
