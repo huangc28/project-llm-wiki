@@ -276,6 +276,166 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("No issues found in .llm-wiki/", output)
             self.assertNotIn("oversized_raw_file", output)
 
+    def test_lint_reports_secret_like_raw_content_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "unsafe.md"
+            unsafe.write_text(
+                "-----BEGIN OPENSSH PRIVATE KEY-----\nkey-body\n-----END OPENSSH PRIVATE KEY-----\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/unsafe.md", output)
+            self.assertIn("redact", output)
+
+    def test_lint_reports_secret_like_non_markdown_raw_file_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "unsafe.env"
+            unsafe.write_text(
+                "DATABASE_URL=postgres://wiki_user:wiki_pass@example.invalid/db\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
+            self.assertIn("redact", output)
+
+    def test_lint_scans_secret_like_content_outside_raw(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nCredential URL: https://agent:secret@example.invalid/private\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/features/ideas.md", output)
+
+    def test_lint_default_raw_policy_does_not_trigger_secret_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("secret_like_content", output)
+
+    def test_lint_secret_scan_does_not_follow_symlink_escape(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            repo = parent / "repo"
+            repo.mkdir()
+            outside = parent / "outside.env"
+            outside.write_text(
+                "DATABASE_URL=postgres://wiki_user:wiki_pass@example.invalid/db\n",
+                encoding="utf-8",
+            )
+            self.init_wiki(repo)
+            symlink = repo / ".llm-wiki" / "raw" / "curated" / "escaped.env"
+            symlink.symlink_to(outside)
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("secret_like_content", output)
+
+    def test_lint_reports_unreadable_wiki_file_for_all_file_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            locked = repo / ".llm-wiki" / "raw" / "curated" / "locked.env"
+            locked.write_text("DATABASE_URL=postgres://user:pass@example.invalid/db\n", encoding="utf-8")
+            locked.chmod(0)
+            try:
+                result = self.run_helper(repo, "lint")
+            finally:
+                locked.chmod(0o644)
+            output = result.stdout + result.stderr
+
+            self.assertEqual(1, result.returncode, output)
+            self.assertIn("severity: error", output)
+            self.assertIn("code: unreadable_wiki_file", output)
+            self.assertIn(".llm-wiki/raw/curated/locked.env", output)
+            self.assertNotIn("Traceback", output)
+
+    def test_lint_reports_stale_updated_frontmatter_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                "---\nupdated: 2000-01-01\n---\n"
+                + ideas.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: stale_page", output)
+            self.assertIn(".llm-wiki/features/ideas.md", output)
+            self.assertIn("review", output)
+            self.assertIn("current repo files", output)
+
+    def test_lint_ignores_pages_without_updated_frontmatter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("stale_page", output)
+
+    def test_warning_only_secret_and_stale_findings_exit_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                "---\nupdated: 2000-01-01\n---\n"
+                + ideas.read_text(encoding="utf-8")
+                + "\nCredential URL: https://agent:secret@example.invalid/private\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn("code: stale_page", output)
+
 
 if __name__ == "__main__":
     unittest.main()
