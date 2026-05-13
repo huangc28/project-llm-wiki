@@ -14,13 +14,11 @@ Future agents and contributors can recover durable project context from the repo
 
 ### Validated
 
-(None yet - ship to validate)
+- [x] Reusable project wiki skill package with documented project-wiki operations, split references, tests, and a no-dependency helper foundation. Validated in Phase 1.
+- [x] Safe git-root `.llm-wiki/` initialization that creates a git-visible skeleton, preserves existing notes on rerun, seeds README/AGENTS source status, and includes raw source policy templates. Validated in Phase 2.
 
 ### Active
 
-- [ ] Create reusable project wiki skills that initialize and maintain a per-repo `.llm-wiki/` directory.
-- [ ] Keep `.llm-wiki/` git-tracked by default while excluding active workflow/task state.
-- [ ] Seed a concise, idempotent wiki skeleton from existing repo files without overwriting existing notes.
 - [ ] Provide query behavior that reads `.llm-wiki/index.md` first, cites wiki pages with wikilinks, and appends to `.llm-wiki/log.md`.
 - [ ] Provide ingest behavior that updates existing wiki pages before creating new pages and stores only curated, de-secreted raw sources.
 - [ ] Provide lint behavior for broken wikilinks, missing index entries, stale pages, secret-looking content, oversized raw files, and likely repo/wiki contradictions.
@@ -58,6 +56,12 @@ The first skill set should likely include:
 - `project-wiki-lint`: check wiki structure, safety, freshness, and contradictions.
 - `project-wiki-promote` or an equivalent later flow: promote validated GSD/PR/debug learnings into `.llm-wiki/`.
 
+## Current State
+
+Phase 2 is complete as of 2026-05-13. The package now exposes a real `project-wiki init` command that resolves the current Git root, refuses unsafe non-git, parent-workspace, symlink, conflict, and invalid-index paths before writes, creates the `.llm-wiki/` skeleton from package templates, and passes the Phase 2 unittest suite.
+
+Next phase: implement `project-wiki lint` for structural wiki checks, safety warnings, freshness signals, and repo/wiki drift reporting.
+
 ## Constraints
 
 - **Repository boundary**: Initialize inside the actual git root, not a multi-repo parent directory - prevents knowledge from landing in the wrong project.
@@ -72,9 +76,9 @@ The first skill set should likely include:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use `.llm-wiki/` as the repo wiki path | Clear, explicit, and separate from `.planning/` and docs intended for humans outside the agent workflow | Pending |
-| Keep `.llm-wiki/` git-tracked by default | Durable project knowledge should travel with the repo and be reviewable in diffs | Pending |
-| Keep active task state out of `.llm-wiki/` | Task state changes quickly and belongs in GSD, Linear, OMX, or workflow files | Pending |
+| Use `.llm-wiki/` as the repo wiki path | Clear, explicit, and separate from `.planning/` and docs intended for humans outside the agent workflow | Validated in Phase 2 |
+| Keep `.llm-wiki/` git-tracked by default | Durable project knowledge should travel with the repo and be reviewable in diffs | Validated in Phase 2 |
+| Keep active task state out of `.llm-wiki/` | Task state changes quickly and belongs in GSD, Linear, OMX, or workflow files | Validated in Phase 2 |
 | Start with one real repo after a clean test repo | Limits rollout risk before applying the pattern across the PeasyDeal workspace | Pending |
 | Treat repo code as source of truth over wiki notes | Prevents stale compiled knowledge from becoming authoritative | Pending |
 | Keep Obsidian and NotebookLM as adjacent layers | Obsidian handles cross-project synthesis; NotebookLM can support retrieval, but neither replaces repo-local truth | Pending |
@@ -97,4 +101,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 after initialization*
+*Last updated: 2026-05-13 after Phase 2 completion*
