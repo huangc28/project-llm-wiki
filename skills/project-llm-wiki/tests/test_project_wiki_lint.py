@@ -172,6 +172,110 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, output)
             self.assertIn("No issues found in .llm-wiki/", output)
 
+    def test_lint_reports_missing_index_entry_as_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            glossary = repo / ".llm-wiki" / "domain" / "glossary.md"
+            glossary.write_text("# Glossary\n", encoding="utf-8")
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: missing_index_entry", output)
+            self.assertIn(".llm-wiki/domain/glossary.md", output)
+            self.assertIn("[[domain/glossary]]", output)
+
+    def test_lint_reports_missing_raw_curated_readme_index_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8").replace(
+                    " and [[raw/curated/README]]", ""
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: missing_index_entry", output)
+            self.assertIn(".llm-wiki/raw/curated/README.md", output)
+            self.assertIn("[[raw/curated/README]]", output)
+
+    def test_lint_does_not_require_raw_curated_sources_in_index(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            source = repo / ".llm-wiki" / "raw" / "curated" / "source.md"
+            source.write_text("# Source\n", encoding="utf-8")
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("source.md", output)
+
+    def test_lint_does_not_require_outgoing_links_on_topic_pages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            standalone = repo / ".llm-wiki" / "features" / "standalone.md"
+            standalone.write_text("# Standalone\n\nNo outgoing links.\n", encoding="utf-8")
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8") + "\n- Standalone: [[features/standalone]]\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+
+    def test_lint_reports_oversized_raw_file_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            oversized = repo / ".llm-wiki" / "raw" / "large.log"
+            oversized.write_text("x" * (100 * 1024 + 1), encoding="utf-8")
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("severity: warning", output)
+            self.assertIn("code: oversized_raw_file", output)
+            self.assertIn(".llm-wiki/raw/large.log", output)
+            self.assertIn("102400 bytes", output)
+
+    def test_lint_does_not_size_check_non_raw_pages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            large_page = repo / ".llm-wiki" / "features" / "large.md"
+            large_page.write_text("x" * (100 * 1024 + 1), encoding="utf-8")
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8") + "\n- Large: [[features/large]]\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("oversized_raw_file", output)
+
 
 if __name__ == "__main__":
     unittest.main()
