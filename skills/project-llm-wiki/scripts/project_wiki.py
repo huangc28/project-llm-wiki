@@ -83,6 +83,15 @@ TEMPLATE_FILES = tuple(
     for relative_path in REQUIRED_FILES
     if relative_path not in GENERATED_FILES
 )
+FINDING_FIELDS = ("severity", "code", "path", "message", "remediation")
+TEXT_FINDING_LABELS = (
+    ("severity", "severity:"),
+    ("code", "code:"),
+    ("path", "path:"),
+    ("message", "message:"),
+    ("remediation", "remediation:"),
+)
+SEVERITY_SORT_RANK = {"error": 0, "warning": 1}
 
 
 def planned_command(name: str, phase: str) -> int:
@@ -702,7 +711,7 @@ def sort_findings(findings: list[dict[str, str]]) -> list[dict[str, str]]:
     return sorted(
         findings,
         key=lambda finding: (
-            finding["severity"] != "error",
+            SEVERITY_SORT_RANK.get(finding["severity"], 99),
             finding["path"],
             finding["code"],
             finding["message"],
@@ -710,20 +719,33 @@ def sort_findings(findings: list[dict[str, str]]) -> list[dict[str, str]]:
     )
 
 
-def render_findings(findings: list[dict[str, str]], as_json: bool) -> None:
-    if as_json:
-        print(json.dumps({"findings": findings}, indent=2, sort_keys=True))
-        return
-
-    if not findings:
+def render_text_findings(findings: list[dict[str, str]]) -> None:
+    sorted_findings = sort_findings(findings)
+    if not sorted_findings:
         print("No issues found in .llm-wiki/")
         return
 
-    print("Lint findings:")
-    for finding in findings:
-        print("-")
-        for key in ("severity", "code", "path", "message", "remediation"):
-            print(f"  {key}: {finding[key]}")
+    for index, finding in enumerate(sorted_findings):
+        if index:
+            print()
+        for key, label in TEXT_FINDING_LABELS:
+            print(f"{label} {finding[key]}")
+
+
+def render_json_findings(findings: list[dict[str, str]]) -> None:
+    sorted_findings = sort_findings(findings)
+    print(json.dumps({"findings": sorted_findings}, indent=2, sort_keys=True))
+
+
+def render_findings(findings: list[dict[str, str]], as_json: bool) -> None:
+    if as_json:
+        render_json_findings(findings)
+    else:
+        render_text_findings(findings)
+
+
+def lint_exit_code(findings: list[dict[str, str]]) -> int:
+    return 1 if any(finding["severity"] == "error" for finding in findings) else 0
 
 
 def run_lint(args) -> int:
@@ -753,9 +775,8 @@ def run_lint(args) -> int:
         *check_stale_pages(git_root, markdown_files),
         *check_repo_path_drift(git_root, markdown_files),
     ]
-    findings = sort_findings(findings)
     render_findings(findings, args.json)
-    return 1 if any(finding["severity"] == "error" for finding in findings) else 0
+    return lint_exit_code(findings)
 
 
 def run_init(args) -> int:
