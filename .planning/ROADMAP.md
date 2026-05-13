@@ -71,7 +71,7 @@ Plans:
 Plans:
 - [x] 03-01: Implement wikilink, index coverage, and file size checks
 - [x] 03-02: Implement secret-looking, stale page, and contradiction warning checks
-- [ ] 03-03: Add lint fixtures and actionable output formatting
+- [x] 03-03: Add lint fixtures and actionable output formatting
 
 ### Phase 4: Query and Ingest Loop
 

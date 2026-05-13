@@ -51,7 +51,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **LINT-04**: User can run a size lint that detects oversized raw files or generated dump-like files.
 - [x] **LINT-05**: User can run a freshness lint that flags stale wiki pages needing review.
 - [x] **LINT-06**: User can receive likely repo/wiki contradiction warnings when wiki claims appear to disagree with current repo files.
-- [ ] **LINT-07**: Lint output includes file paths, issue type, severity, and actionable remediation guidance.
+- [x] **LINT-07**: Lint output includes file paths, issue type, severity, and actionable remediation guidance.
 
 ### Agent Instructions
 
@@ -133,7 +133,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LINT-04 | Phase 3 | Complete |
 | LINT-05 | Phase 3 | Complete |
 | LINT-06 | Phase 3 | Complete |
-| LINT-07 | Phase 3 | Pending |
+| LINT-07 | Phase 3 | Complete |
 | AGENT-01 | Phase 5 | Pending |
 | AGENT-02 | Phase 5 | Pending |
 | AGENT-03 | Phase 5 | Pending |
