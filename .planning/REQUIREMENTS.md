@@ -30,10 +30,10 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Query
 
-- [ ] **QUERY-01**: User can query project wiki knowledge and the skill reads `.llm-wiki/index.md` before reading individual wiki pages.
-- [ ] **QUERY-02**: User receives answers that cite repo-local wiki pages with `[[wikilink]]` citations.
-- [ ] **QUERY-03**: User receives a clear "not covered" answer when `.llm-wiki/` has no relevant coverage, with a suggestion to ingest or initialize relevant pages.
-- [ ] **QUERY-04**: User queries append an entry to `.llm-wiki/log.md` with date, query summary, pages consulted, and key insight.
+- [x] **QUERY-01**: User can query project wiki knowledge and the skill reads `.llm-wiki/index.md` before reading individual wiki pages.
+- [x] **QUERY-02**: User receives answers that cite repo-local wiki pages with `[[wikilink]]` citations.
+- [x] **QUERY-03**: User receives a clear "not covered" answer when `.llm-wiki/` has no relevant coverage, with a suggestion to ingest or initialize relevant pages.
+- [x] **QUERY-04**: User queries append an entry to `.llm-wiki/log.md` with date, query summary, pages consulted, and key insight.
 
 ### Ingest
 
@@ -65,7 +65,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 - [x] **TEST-01**: A clean test repo can run init and show `.llm-wiki/` files in `git status`.
 - [x] **TEST-02**: A clean test repo can rerun init without duplicated sections or overwritten notes.
-- [ ] **TEST-03**: Query against seeded pages returns wiki-cited answers and appends `.llm-wiki/log.md`.
+- [x] **TEST-03**: Query against seeded pages returns wiki-cited answers and appends `.llm-wiki/log.md`.
 - [x] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
 - [x] **TEST-05**: Lint with an intentionally secret-looking raw file reports the issue.
 - [ ] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
@@ -118,10 +118,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RAW-01 | Phase 2 | Complete |
 | RAW-02 | Phase 2 | Complete |
 | RAW-03 | Phase 2 | Complete |
-| QUERY-01 | Phase 4 | Pending |
-| QUERY-02 | Phase 4 | Pending |
-| QUERY-03 | Phase 4 | Pending |
-| QUERY-04 | Phase 4 | Pending |
+| QUERY-01 | Phase 4 | Complete |
+| QUERY-02 | Phase 4 | Complete |
+| QUERY-03 | Phase 4 | Complete |
+| QUERY-04 | Phase 4 | Complete |
 | INGEST-01 | Phase 4 | Pending |
 | INGEST-02 | Phase 4 | Pending |
 | INGEST-03 | Phase 4 | Pending |
@@ -141,7 +141,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGENT-05 | Phase 5 | Pending |
 | TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
-| TEST-03 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Complete |
 | TEST-04 | Phase 3 | Complete |
 | TEST-05 | Phase 3 | Complete |
 | TEST-06 | Phase 5 | Pending |

@@ -88,7 +88,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Implement query protocol and log append behavior
+- [x] 04-01: Implement query protocol and log append behavior
 - [ ] 04-02: Implement curated ingest protocol, provenance, index updates, and summary rules
 - [ ] 04-03: Add query/ingest fixtures and boundary tests
 
