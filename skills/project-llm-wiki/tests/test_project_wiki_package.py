@@ -65,7 +65,7 @@ class ProjectWikiPackageTests(unittest.TestCase):
             self.assertFalse((tmp_path / ".llm-wiki").exists())
 
     def test_helper_imports_only_allowed_modules(self):
-        allowed = {"argparse", "pathlib", "subprocess", "sys", "textwrap"}
+        allowed = {"argparse", "json", "pathlib", "re", "subprocess", "sys", "textwrap"}
         script = (PACKAGE / "scripts" / "project_wiki.py").read_text()
         imported = set()
 

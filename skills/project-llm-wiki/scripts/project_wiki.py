@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import pathlib
+import re
 import subprocess
 import sys
 import textwrap
@@ -40,6 +42,7 @@ REQUIRED_FILES = tuple(
     )
 )
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
+WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 GENERATED_FILES = {
     pathlib.Path(".llm-wiki/summaries/repo-overview.md"),
     pathlib.Path(".llm-wiki/architecture/.gitkeep"),
@@ -160,6 +163,154 @@ def path_is_under(path: pathlib.Path, root: pathlib.Path) -> bool:
     return True
 
 
+def repo_relative_path(path: pathlib.Path | str, git_root: pathlib.Path) -> str:
+    if isinstance(path, pathlib.Path):
+        try:
+            return path.relative_to(git_root).as_posix()
+        except ValueError:
+            return path.as_posix()
+    return str(path)
+
+
+def make_finding(
+    severity: str,
+    code: str,
+    path: pathlib.Path | str,
+    message: str,
+    remediation: str,
+) -> dict[str, str]:
+    return {
+        "severity": severity,
+        "code": code,
+        "path": path.as_posix() if isinstance(path, pathlib.Path) else path,
+        "message": message,
+        "remediation": remediation,
+    }
+
+
+def collect_wiki_files(git_root: pathlib.Path) -> list[pathlib.Path]:
+    wiki_root = git_root / WIKI_ROOT
+    files: list[pathlib.Path] = []
+    pending = [wiki_root]
+
+    while pending:
+        current = pending.pop()
+        try:
+            entries = sorted(current.iterdir(), key=lambda path: path.as_posix())
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.is_symlink() or not path_is_under(entry, wiki_root):
+                continue
+            if entry.is_dir():
+                pending.append(entry)
+            elif entry.is_file():
+                files.append(entry)
+
+    return sorted(files, key=lambda path: path.relative_to(git_root).as_posix())
+
+
+def collect_markdown_files(git_root: pathlib.Path) -> list[pathlib.Path]:
+    return [path for path in collect_wiki_files(git_root) if path.suffix == ".md"]
+
+
+def collect_lint_files(git_root: pathlib.Path) -> list[pathlib.Path]:
+    return collect_markdown_files(git_root)
+
+
+def read_wiki_text(
+    path: pathlib.Path, git_root: pathlib.Path
+) -> tuple[str | None, dict[str, str] | None]:
+    relative_path = repo_relative_path(path, git_root)
+    try:
+        return path.read_text(encoding="utf-8"), None
+    except (OSError, UnicodeDecodeError):
+        return None, make_finding(
+            "error",
+            "unreadable_wiki_file",
+            relative_path,
+            "Wiki file could not be read as UTF-8 text.",
+            "Fix file permissions or replace the file with readable UTF-8 text before running project-wiki lint.",
+        )
+
+
+def extract_wikilinks(markdown_text: str) -> list[str]:
+    return [match.group(1).strip() for match in WIKILINK_PATTERN.finditer(markdown_text)]
+
+
+def normalize_wikilink_target(raw_target: str) -> str:
+    target = raw_target.split("|", 1)[0].split("#", 1)[0].strip()
+    if not target:
+        return ""
+    pure_target = pathlib.PurePosixPath(target)
+    if pure_target.suffix:
+        return pure_target.as_posix()
+    return f"{pure_target.as_posix()}.md"
+
+
+def wikilink_target_error(raw_target: str, normalized_target: str) -> str | None:
+    if not normalized_target:
+        return "empty target"
+    target = pathlib.PurePosixPath(normalized_target)
+    if target.is_absolute() or ".." in target.parts:
+        return "target must stay inside .llm-wiki"
+    return None
+
+
+def check_broken_wikilinks(
+    git_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    wiki_root = git_root / WIKI_ROOT
+    findings: list[dict[str, str]] = []
+
+    for markdown_file in markdown_files:
+        relative_path = repo_relative_path(markdown_file, git_root)
+        markdown_text, read_error = read_wiki_text(markdown_file, git_root)
+        if read_error is not None:
+            findings.append(read_error)
+            continue
+        assert markdown_text is not None
+        for raw_target in extract_wikilinks(markdown_text):
+            normalized_target = normalize_wikilink_target(raw_target)
+            target_error = wikilink_target_error(raw_target, normalized_target)
+            target_path = wiki_root / pathlib.Path(normalized_target)
+            if target_error is None and not path_is_under(target_path, wiki_root):
+                target_error = "target must stay inside .llm-wiki"
+            if (
+                target_error is None
+                and target_path.is_file()
+                and not target_path.is_symlink()
+            ):
+                continue
+
+            if target_error is None:
+                message = (
+                    f"Wikilink [[{raw_target}]] points to missing page "
+                    f"{WIKI_ROOT / pathlib.Path(normalized_target)}."
+                )
+                remediation = (
+                    f"Create {(WIKI_ROOT / pathlib.Path(normalized_target)).as_posix()} "
+                    f"or update the wikilink in {relative_path}."
+                )
+            else:
+                message = f"Wikilink [[{raw_target}]] is invalid: {target_error}."
+                remediation = (
+                    "Use a wiki-root-relative target that stays inside .llm-wiki, "
+                    "for example [[features/ideas]]."
+                )
+            findings.append(
+                make_finding(
+                    "error",
+                    "broken_wikilink",
+                    relative_path,
+                    message,
+                    remediation,
+                )
+            )
+
+    return findings
+
+
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     conflicts: list[str] = []
     for relative_path in REQUIRED_DIRECTORIES:
@@ -270,6 +421,58 @@ def print_source_status(found: list[str], skipped: list[str]) -> None:
     print(f"Skipped sources: {format_source_status(skipped)}")
 
 
+def sort_findings(findings: list[dict[str, str]]) -> list[dict[str, str]]:
+    return sorted(
+        findings,
+        key=lambda finding: (
+            finding["severity"] != "error",
+            finding["path"],
+            finding["code"],
+            finding["message"],
+        ),
+    )
+
+
+def render_findings(findings: list[dict[str, str]], as_json: bool) -> None:
+    if as_json:
+        print(json.dumps({"findings": findings}, indent=2, sort_keys=True))
+        return
+
+    if not findings:
+        print("No issues found in .llm-wiki/")
+        return
+
+    print("Lint findings:")
+    for finding in findings:
+        print("-")
+        for key in ("severity", "code", "path", "message", "remediation"):
+            print(f"  {key}: {finding[key]}")
+
+
+def run_lint(args) -> int:
+    cwd = pathlib.Path.cwd()
+    git_root, _message = resolve_git_root(cwd)
+    if git_root is None:
+        print("No git repository found for current directory.")
+        return 2
+
+    wiki_root = git_root / WIKI_ROOT
+    if (
+        not wiki_root.exists()
+        or not wiki_root.is_dir()
+        or wiki_root.is_symlink()
+        or not path_is_under(wiki_root, git_root)
+    ):
+        print("No .llm-wiki directory found in the resolved Git root.")
+        return 2
+
+    _wiki_files = collect_wiki_files(git_root)
+    markdown_files = collect_markdown_files(git_root)
+    findings = sort_findings(check_broken_wikilinks(git_root, markdown_files))
+    render_findings(findings, args.json)
+    return 1 if any(finding["severity"] == "error" for finding in findings) else 0
+
+
 def run_init(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -341,7 +544,7 @@ def build_parser():
             """\
             project-wiki init creates a .llm-wiki skeleton in the current Git root.
             Use project-wiki init --dry-run to preview changes without writing files.
-            lint, query, and ingest remain planned for later phases.
+            query and ingest remain planned for later phases.
             """
         ),
     )
@@ -364,8 +567,9 @@ def build_parser():
     )
     init.set_defaults(func=run_init)
 
-    lint = subcommands.add_parser("lint", help="planned project-wiki-lint mode")
-    lint.set_defaults(func=lambda _args: planned_command("project-wiki-lint", "Phase 3"))
+    lint = subcommands.add_parser("lint", help="lint .llm-wiki structure")
+    lint.add_argument("--json", action="store_true", help="render lint findings as JSON")
+    lint.set_defaults(func=run_lint)
 
     query = subcommands.add_parser("query", help="planned project-wiki-query mode")
     query.set_defaults(func=lambda _args: planned_command("project-wiki-query", "Phase 4"))
