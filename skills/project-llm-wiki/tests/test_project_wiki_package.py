@@ -48,6 +48,33 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("--json", result.stdout)
 
+    def test_command_surface_documents_completed_lint_contract(self):
+        command_surface = (PACKAGE / "references" / "command-surface.md").read_text()
+
+        self.assertIn("project-wiki lint --json", command_surface)
+        self.assertIn("warning-only", command_surface)
+        self.assertRegex(
+            command_surface,
+            r"severity.*code.*path.*message.*remediation",
+        )
+        self.assertNotIn("Lint and safety checks: Phase 3", command_surface)
+
+    def test_testing_reference_documents_phase_3_validation_contract(self):
+        testing_reference = (PACKAGE / "references" / "testing.md").read_text()
+
+        for expected in (
+            "Phase 3 Validation Contract",
+            "test_project_wiki_lint.py",
+            "broken wikilinks",
+            "missing index entries",
+            "secret-looking content",
+            "oversized raw files",
+            "stale pages",
+            "repo path drift",
+            "read-only",
+        ):
+            self.assertIn(expected, testing_reference)
+
     def test_helper_version_output(self):
         result = self.run_helper("version")
 

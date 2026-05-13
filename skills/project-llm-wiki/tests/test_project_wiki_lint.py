@@ -48,6 +48,15 @@ class ProjectWikiLintTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         return result
 
+    def snapshot_wiki_files(self, repo: Path):
+        wiki_root = repo / ".llm-wiki"
+        snapshot = {}
+        for path in sorted(wiki_root.rglob("*")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            snapshot[path.relative_to(repo).as_posix()] = path.read_bytes()
+        return snapshot
+
     def load_helper_module(self):
         spec = importlib.util.spec_from_file_location("project_wiki_under_test", HELPER)
         self.assertIsNotNone(spec)
@@ -298,6 +307,27 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn(".llm-wiki/domain/glossary.md", output)
             self.assertIn("[[domain/glossary]]", output)
 
+    def test_missing_index_entry_fixture_covers_test_04(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8").replace(
+                    "- Durable ideas: [[features/ideas]]\n", ""
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("missing_index_entry", output)
+            self.assertIn("warning", output)
+            self.assertIn(".llm-wiki/features/ideas.md", output)
+            self.assertIn(".llm-wiki/index.md", output)
+
     def test_lint_reports_missing_raw_curated_readme_index_entry(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -421,6 +451,25 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, output)
             self.assertIn("severity: warning", output)
             self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
+            self.assertIn("redact", output)
+
+    def test_secret_like_raw_file_fixture_covers_test_05(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "unsafe.env"
+            unsafe.write_text(
+                "DATABASE_URL=postgres://wiki_user:wiki_pass@example.invalid/db\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("secret_like_content", output)
+            self.assertIn("warning", output)
             self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
             self.assertIn("redact", output)
 
@@ -678,6 +727,46 @@ class ProjectWikiLintTests(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, output)
             self.assertIn("code: missing_repo_path", output)
+
+    def test_lint_warning_runs_are_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8").replace(
+                    "- Durable ideas: [[features/ideas]]\n", ""
+                ),
+                encoding="utf-8",
+            )
+            before = self.snapshot_wiki_files(repo)
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+            after = self.snapshot_wiki_files(repo)
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("missing_index_entry", output)
+            self.assertEqual(before, after)
+
+    def test_lint_error_runs_are_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8") + "\nSee [[missing-page]].\n",
+                encoding="utf-8",
+            )
+            before = self.snapshot_wiki_files(repo)
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+            after = self.snapshot_wiki_files(repo)
+
+            self.assertEqual(1, result.returncode, output)
+            self.assertIn("broken_wikilink", output)
+            self.assertEqual(before, after)
 
 
 if __name__ == "__main__":
