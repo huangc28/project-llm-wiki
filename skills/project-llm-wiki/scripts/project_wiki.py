@@ -74,6 +74,8 @@ LINE_REFERENCE_PATTERN = re.compile(
 )
 RAW_SIZE_WARNING_BYTES = 100 * 1024
 STALE_AFTER_DAYS = 90
+LOG_TITLE_MAX_CHARS = 120
+LOG_INSIGHT_MAX_CHARS = 240
 SHELL_INTERPOLATION_CHARS = frozenset("$`{}()<>|;&")
 INDEX_COVERAGE_DIRECTORIES = (
     "architecture",
@@ -877,6 +879,128 @@ def run_lint(args) -> int:
     return lint_exit_code(findings)
 
 
+def trim_summary_text(value: str, limit: int) -> str:
+    summary = " ".join(value.split())
+    if len(summary) <= limit:
+        return summary
+    truncated = summary[:limit].rsplit(" ", 1)[0].rstrip()
+    return f"{truncated}..." if truncated else f"{summary[:limit].rstrip()}..."
+
+
+def wikilink_from_normalized_target(normalized_target: str) -> str:
+    return f"[[{pathlib.PurePosixPath(normalized_target).with_suffix('').as_posix()}]]"
+
+
+def format_wikilink_page(page: str) -> str:
+    raw_page = page.strip()
+    if raw_page.startswith("[[") and raw_page.endswith("]]"):
+        raw_page = raw_page[2:-2]
+    normalized_target = normalize_wikilink_target(raw_page)
+    target_error = wikilink_target_error(raw_page, normalized_target)
+    if target_error is not None:
+        raise ValueError(target_error)
+    return wikilink_from_normalized_target(normalized_target)
+
+
+def read_query_index(
+    git_root: pathlib.Path,
+) -> tuple[str | None, list[str], str | None]:
+    wiki_root = git_root / WIKI_ROOT
+    if (
+        not wiki_root.exists()
+        or not wiki_root.is_dir()
+        or wiki_root.is_symlink()
+        or not path_is_under(wiki_root, git_root)
+    ):
+        return None, [], "No .llm-wiki directory found in the resolved Git root."
+
+    index_path = wiki_root / "index.md"
+    if not index_path.is_file() or index_path.is_symlink():
+        return None, [], "No .llm-wiki/index.md found in the resolved Git root."
+
+    index_text, read_error = read_wiki_text(index_path, git_root)
+    if read_error is not None:
+        return None, [], read_error["message"]
+    assert index_text is not None
+
+    candidate_pages: list[str] = []
+    seen_pages: set[str] = set()
+    for raw_target in extract_wikilinks(index_text):
+        normalized_target = normalize_wikilink_target(raw_target)
+        if wikilink_target_error(raw_target, normalized_target) is not None:
+            continue
+        page = wikilink_from_normalized_target(normalized_target)
+        if page not in seen_pages:
+            seen_pages.add(page)
+            candidate_pages.append(page)
+    return index_text, candidate_pages, None
+
+
+def build_query_packet(git_root: pathlib.Path, question: str) -> dict[str, object]:
+    _index_text, candidate_pages, error = read_query_index(git_root)
+    if error is not None:
+        raise ValueError(error)
+    return {
+        "question": question,
+        "index_path": ".llm-wiki/index.md",
+        "candidate_pages": candidate_pages,
+        "answer_contract": [
+            "Read .llm-wiki/index.md first.",
+            "Direct claims require [[wikilink]] citations.",
+            "Put synthesis or inference under a labeled Inference section.",
+        ],
+        "not_covered_template": [
+            "Say `.llm-wiki/` does not currently cover the topic.",
+            "List pages consulted.",
+            "Suggest the source type to ingest next.",
+        ],
+    }
+
+
+def render_query_packet(packet: dict[str, object], as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(packet, indent=2, sort_keys=True))
+        return
+
+    print(f"Index: {packet['index_path']}")
+    print("Candidate pages:")
+    candidate_pages = packet["candidate_pages"]
+    if isinstance(candidate_pages, list) and candidate_pages:
+        for page in candidate_pages:
+            print(f"- {page}")
+    else:
+        print("- (none)")
+
+    print("Answer contract:")
+    answer_contract = packet["answer_contract"]
+    if isinstance(answer_contract, list):
+        for item in answer_contract:
+            print(f"- {item}")
+
+    print("Not-covered template:")
+    not_covered_template = packet["not_covered_template"]
+    if isinstance(not_covered_template, list):
+        for item in not_covered_template:
+            print(f"- {item}")
+
+
+def run_query(args) -> int:
+    cwd = pathlib.Path.cwd()
+    git_root, _message = resolve_git_root(cwd)
+    if git_root is None:
+        print("No git repository found for current directory.")
+        return 2
+
+    try:
+        packet = build_query_packet(git_root, args.question)
+    except ValueError as error:
+        print(str(error))
+        return 2
+
+    render_query_packet(packet, args.json)
+    return 0
+
+
 def run_init(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -975,8 +1099,37 @@ def build_parser():
     lint.add_argument("--json", action="store_true", help="render lint findings as JSON")
     lint.set_defaults(func=run_lint)
 
-    query = subcommands.add_parser("query", help="planned project-wiki-query mode")
-    query.set_defaults(func=lambda _args: planned_command("project-wiki-query", "Phase 4"))
+    query = subcommands.add_parser(
+        "query", help="prepare an index-first project wiki query"
+    )
+    query.add_argument(
+        "question", help="question or topic to answer from .llm-wiki"
+    )
+    query.add_argument(
+        "--json", action="store_true", help="render query support packet as JSON"
+    )
+    query.add_argument(
+        "--consulted",
+        action="append",
+        default=[],
+        help="wiki page consulted by the agent, e.g. features/ideas",
+    )
+    query.add_argument(
+        "--key-insight",
+        default="",
+        help="concise insight or not-covered result to append to log.md",
+    )
+    query.add_argument(
+        "--not-covered",
+        action="store_true",
+        help="log the query as not covered by current wiki pages",
+    )
+    query.add_argument(
+        "--suggest-source",
+        default="",
+        help="source type to suggest when the topic is not covered",
+    )
+    query.set_defaults(func=run_query)
 
     ingest = subcommands.add_parser("ingest", help="planned project-wiki-ingest mode")
     ingest.set_defaults(func=lambda _args: planned_command("project-wiki-ingest", "Phase 4"))
