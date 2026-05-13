@@ -32,7 +32,19 @@ Phase 1 documents the package surface; later phases implement full mode behavior
 
 `project-wiki-lint` checks wiki structure, safety, freshness, and repo/wiki drift. Full behavior is implemented in Phase 3.
 
-`project-wiki-query` answers from `.llm-wiki/index.md` and related pages with repo-local wikilink citations. Full behavior is implemented in Phase 4.
+`project-wiki-query` answers from `.llm-wiki/index.md` and related pages with repo-local wikilink citations.
+
+Query protocol:
+
+1. Resolve the target repository's Git root.
+2. Read .llm-wiki/index.md first.
+3. Inspect the relevant linked wiki pages before answering.
+4. Direct claims require `[[wikilink]]` citations to repo-local wiki pages.
+5. Put synthesis or cross-page reasoning under an `Inference` section.
+6. If `.llm-wiki/` does not currently cover the topic, say that clearly, list pages consulted, and suggest the source type to ingest next.
+7. Append a concise query entry to `.llm-wiki/log.md` with date, query summary, pages consulted, and key insight or not-covered result.
+
+Do not store full transcripts, complete question/answer chat history, or unvalidated task notes in `.llm-wiki/log.md`.
 
 `project-wiki-ingest` updates durable wiki pages from curated, de-secreted project sources. Full behavior is implemented in Phase 4.
 

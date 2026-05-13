@@ -46,7 +46,25 @@ Clean runs print `No issues found in .llm-wiki/` for text output and `{"findings
 
 ### project-wiki-query
 
-Planned mode for reading `.llm-wiki/index.md` first, answering with repo-local `[[wikilink]]` citations, and appending query history to `.llm-wiki/log.md`.
+Implemented support mode for reading `.llm-wiki/index.md` first, preparing candidate repo-local wiki pages, and appending bounded query history to `.llm-wiki/log.md`.
+
+Prepare a human-readable support packet:
+
+`project-wiki query QUESTION`
+
+Prepare a parseable support packet:
+
+`project-wiki query QUESTION --json`
+
+Append a query log entry after the agent answers:
+
+`project-wiki query QUESTION --consulted PAGE --key-insight TEXT`
+
+Append a conservative not-covered log entry:
+
+`project-wiki query QUESTION --not-covered --suggest-source TEXT`
+
+The helper does not generate final semantic answers. Agents still read the returned candidate pages, answer with direct claims cited by `[[wikilink]]`, put synthesis under a labeled `Inference` section, and use a not-covered response when the current wiki lacks evidence.
 
 ### project-wiki-ingest
 
