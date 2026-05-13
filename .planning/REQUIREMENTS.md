@@ -45,10 +45,10 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Lint
 
-- [ ] **LINT-01**: User can run a structural lint that detects broken wikilinks.
-- [ ] **LINT-02**: User can run a structural lint that detects files missing from `.llm-wiki/index.md`.
+- [x] **LINT-01**: User can run a structural lint that detects broken wikilinks.
+- [x] **LINT-02**: User can run a structural lint that detects files missing from `.llm-wiki/index.md`.
 - [ ] **LINT-03**: User can run a safety lint that detects secret-looking content in `.llm-wiki/raw/` and other wiki files.
-- [ ] **LINT-04**: User can run a size lint that detects oversized raw files or generated dump-like files.
+- [x] **LINT-04**: User can run a size lint that detects oversized raw files or generated dump-like files.
 - [ ] **LINT-05**: User can run a freshness lint that flags stale wiki pages needing review.
 - [ ] **LINT-06**: User can receive likely repo/wiki contradiction warnings when wiki claims appear to disagree with current repo files.
 - [ ] **LINT-07**: Lint output includes file paths, issue type, severity, and actionable remediation guidance.
@@ -66,7 +66,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **TEST-01**: A clean test repo can run init and show `.llm-wiki/` files in `git status`.
 - [x] **TEST-02**: A clean test repo can rerun init without duplicated sections or overwritten notes.
 - [ ] **TEST-03**: Query against seeded pages returns wiki-cited answers and appends `.llm-wiki/log.md`.
-- [ ] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
+- [x] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
 - [ ] **TEST-05**: Lint with an intentionally secret-looking raw file reports the issue.
 - [ ] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
 - [ ] **TEST-07**: The pattern is dry-run validated against `peasydeal_be` before being applied to other PeasyDeal repos.
@@ -127,10 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INGEST-03 | Phase 4 | Pending |
 | INGEST-04 | Phase 4 | Pending |
 | INGEST-05 | Phase 4 | Pending |
-| LINT-01 | Phase 3 | Pending |
-| LINT-02 | Phase 3 | Pending |
+| LINT-01 | Phase 3 | Complete |
+| LINT-02 | Phase 3 | Complete |
 | LINT-03 | Phase 3 | Pending |
-| LINT-04 | Phase 3 | Pending |
+| LINT-04 | Phase 3 | Complete |
 | LINT-05 | Phase 3 | Pending |
 | LINT-06 | Phase 3 | Pending |
 | LINT-07 | Phase 3 | Pending |
@@ -142,7 +142,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 4 | Pending |
-| TEST-04 | Phase 3 | Pending |
+| TEST-04 | Phase 3 | Complete |
 | TEST-05 | Phase 3 | Pending |
 | TEST-06 | Phase 5 | Pending |
 | TEST-07 | Phase 5 | Pending |

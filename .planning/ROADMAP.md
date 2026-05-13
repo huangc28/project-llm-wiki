@@ -69,7 +69,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement wikilink, index coverage, and file size checks
+- [x] 03-01: Implement wikilink, index coverage, and file size checks
 - [ ] 03-02: Implement secret-looking, stale page, and contradiction warning checks
 - [ ] 03-03: Add lint fixtures and actionable output formatting
 
@@ -120,6 +120,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Skill Package Foundation | 2/2 | Complete | 2026-05-12 |
 | 2. Init and Wiki Templates | 3/3 | Complete | 2026-05-13 |
-| 3. Lint and Safety Checks | 0/3 | Not started | - |
+| 3. Lint and Safety Checks | 1/3 | In Progress | - |
 | 4. Query and Ingest Loop | 0/3 | Not started | - |
 | 5. Agent Instructions and Real Repo Validation | 0/3 | Not started | - |
