@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-05-13T03:33:52.147Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-05-13T03:48:23.381Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 03 (lint-and-safety-checks) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-13
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [████████░░] 75%
 | Phase 01 P01 | 9 min | 3 tasks | 5 files |
 | Phase 02-init-and-wiki-templates P01 | 8m | 2 tasks | 2 files |
 | Phase 03-lint-and-safety-checks P01 | 8m | 2 tasks | 3 files |
+| Phase 03-lint-and-safety-checks P02 | 9m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Recent decisions affecting current work:
 - [Phase 03-lint-and-safety-checks]: Lint resolves the current Git root before inspecting .llm-wiki. — Plan 03-01 preserves the repository boundary and prevents scans from a multi-repo parent or symlink escape.
 - [Phase 03-lint-and-safety-checks]: Broken Obsidian wikilinks are errors while missing index coverage and oversized raw files are warnings. — This matches the Phase 3 exit-code contract: error findings fail lint, warning-only findings remain non-blocking.
 - [Phase 03-lint-and-safety-checks]: Index coverage includes main category pages plus raw policy pages, excluding other raw-curated sources. — This keeps durable pages discoverable from index.md without forcing every curated raw source into top-level navigation.
+- [Phase 03-lint-and-safety-checks]: Secret-looking lint scans the collect_wiki_files(git_root) inventory, including non-Markdown raw files, and stays warning-only. — Plan 03-02 requires all-wiki safety coverage without failing warning-only lint runs.
+- [Phase 03-lint-and-safety-checks]: Secret heuristics are limited to private key delimiters and credential-bearing URLs to avoid raw policy false positives. — Phase 3 favors high-confidence detection over broad keyword scanning.
+- [Phase 03-lint-and-safety-checks]: Repo path drift inspects only inline code spans and fenced code block lines, then checks only root-confined relative candidates. — This keeps contradiction warnings deterministic and avoids prose-wide false positives.
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None
 
 ## Session Continuity
 
-Last session: 2026-05-13T03:33:52.138Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-05-13T03:48:23.373Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
