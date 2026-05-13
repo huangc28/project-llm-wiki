@@ -1,4 +1,6 @@
 from pathlib import Path
+import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -46,6 +48,14 @@ class ProjectWikiLintTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         return result
 
+    def load_helper_module(self):
+        spec = importlib.util.spec_from_file_location("project_wiki_under_test", HELPER)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
     def test_lint_clean_initialized_wiki_reports_success(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -75,6 +85,106 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: broken_wikilink", output)
             self.assertIn(".llm-wiki/features/ideas.md", output)
             self.assertIn("missing-page", output)
+
+    def test_lint_text_output_includes_fixed_finding_fields(self):
+        helper = self.load_helper_module()
+        self.assertTrue(hasattr(helper, "render_text_findings"))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8") + "\nSee [[missing-page]].\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+            stripped_lines = [line.strip() for line in output.splitlines()]
+
+            self.assertEqual(1, result.returncode, output)
+            for label in (
+                "severity:",
+                "code:",
+                "path:",
+                "message:",
+                "remediation:",
+            ):
+                self.assertTrue(
+                    any(line.startswith(label) for line in stripped_lines), output
+                )
+
+    def test_lint_json_output_uses_fixed_finding_fields(self):
+        helper = self.load_helper_module()
+        self.assertTrue(hasattr(helper, "render_json_findings"))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8") + "\nSee [[missing-page]].\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint", "--json")
+            payload = json.loads(result.stdout)
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", result.stderr)
+            self.assertEqual(["findings"], list(payload.keys()))
+            self.assertTrue(payload["findings"])
+            self.assertEqual(
+                {"severity", "code", "path", "message", "remediation"},
+                set(payload["findings"][0].keys()),
+            )
+            self.assertEqual("error", payload["findings"][0]["severity"])
+
+    def test_lint_json_success_outputs_empty_findings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(repo, "lint", "--json")
+            payload = json.loads(result.stdout)
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", result.stderr)
+            self.assertEqual({"findings": []}, payload)
+
+    def test_lint_exit_code_is_one_only_when_error_exists(self):
+        helper = self.load_helper_module()
+
+        self.assertEqual(0, helper.lint_exit_code([]))
+        self.assertEqual(
+            0,
+            helper.lint_exit_code(
+                [
+                    helper.make_finding(
+                        "warning",
+                        "missing_index_entry",
+                        ".llm-wiki/features/ideas.md",
+                        "Main wiki page is not linked from .llm-wiki/index.md.",
+                        "Add [[features/ideas]] to .llm-wiki/index.md.",
+                    )
+                ]
+            ),
+        )
+        self.assertEqual(
+            1,
+            helper.lint_exit_code(
+                [
+                    helper.make_finding(
+                        "error",
+                        "broken_wikilink",
+                        ".llm-wiki/features/ideas.md",
+                        "Wikilink points to missing page.",
+                        "Create the page or update the wikilink.",
+                    )
+                ]
+            ),
+        )
 
     def test_lint_supports_alias_heading_and_md_wikilink_forms(self):
         with tempfile.TemporaryDirectory() as tmp:
