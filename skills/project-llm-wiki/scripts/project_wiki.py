@@ -44,6 +44,7 @@ REQUIRED_FILES = tuple(
 )
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
 WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
+INLINE_CODE_SPAN_PATTERN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 PRIVATE_KEY_PATTERN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
 CREDENTIAL_URL_PATTERN = re.compile(
     r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]+:[^\s/@]+@[^\s/@]+"
@@ -51,6 +52,7 @@ CREDENTIAL_URL_PATTERN = re.compile(
 UPDATED_FRONTMATTER_PATTERN = re.compile(r"updated:\s*(\d{4}-\d{2}-\d{2})\s*")
 RAW_SIZE_WARNING_BYTES = 100 * 1024
 STALE_AFTER_DAYS = 90
+SHELL_INTERPOLATION_CHARS = frozenset("$`{}()<>|;&")
 INDEX_COVERAGE_DIRECTORIES = (
     "architecture",
     "domain",
@@ -508,6 +510,84 @@ def check_stale_pages(
     return findings
 
 
+def extract_markdown_code_references(markdown_text: str) -> list[str]:
+    references: list[str] = []
+    in_fence = False
+    for line in markdown_text.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            reference = line.strip()
+            if reference:
+                references.append(reference)
+            continue
+        for match in INLINE_CODE_SPAN_PATTERN.finditer(line):
+            reference = match.group(1).strip()
+            if reference:
+                references.append(reference)
+    return references
+
+
+def normalize_repo_path_candidate(reference: str) -> str | None:
+    candidate = reference.strip()
+    if candidate.startswith("./"):
+        candidate = candidate[2:]
+    if not candidate or "/" not in candidate:
+        return None
+    if candidate.endswith("/"):
+        return None
+    if any(character.isspace() for character in candidate):
+        return None
+    if candidate.startswith((".llm-wiki/", "../", "/", "~", "http://", "https://")):
+        return None
+    if any(character in candidate for character in SHELL_INTERPOLATION_CHARS):
+        return None
+
+    pure_path = pathlib.PurePosixPath(candidate)
+    if pure_path.is_absolute() or ".." in pure_path.parts:
+        return None
+    return pure_path.as_posix()
+
+
+def check_repo_path_drift(
+    git_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    for markdown_file in markdown_files:
+        relative_path = repo_relative_path(markdown_file, git_root)
+        markdown_text, read_error = read_wiki_text(markdown_file, git_root)
+        if read_error is not None:
+            continue
+        assert markdown_text is not None
+
+        seen_candidates: set[str] = set()
+        for reference in extract_markdown_code_references(markdown_text):
+            candidate = normalize_repo_path_candidate(reference)
+            if candidate is None or candidate in seen_candidates:
+                continue
+            seen_candidates.add(candidate)
+            candidate_path = git_root / pathlib.Path(candidate)
+            if not path_is_under(candidate_path, git_root):
+                continue
+            if candidate_path.exists():
+                continue
+            findings.append(
+                make_finding(
+                    "warning",
+                    "missing_repo_path",
+                    relative_path,
+                    f"Wiki reference points to missing repo path {candidate}.",
+                    (
+                        "Verify whether the wiki reference is stale, update the "
+                        "wiki after checking current repo files, or remove the "
+                        "reference if it is only an example."
+                    ),
+                )
+            )
+    return findings
+
+
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     conflicts: list[str] = []
     for relative_path in REQUIRED_DIRECTORIES:
@@ -671,6 +751,7 @@ def run_lint(args) -> int:
         *check_raw_file_sizes(git_root),
         *check_secret_like_content(git_root, wiki_files),
         *check_stale_pages(git_root, markdown_files),
+        *check_repo_path_drift(git_root, markdown_files),
     ]
     findings = sort_findings(findings)
     render_findings(findings, args.json)
