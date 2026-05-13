@@ -508,6 +508,53 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: secret_like_content", output)
             self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
 
+    def test_lint_reports_multi_component_env_secret_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "secrets.env"
+            unsafe.write_text(
+                "\n".join(
+                    [
+                        "DATABASE_PASSWORD=prod-db-password",
+                        "SLACK_BOT_TOKEN=xoxb-123456789012-abcdefghijklmnop",
+                        "STRIPE_SECRET_KEY=sk_live_12345678901234567890",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/secrets.env", output)
+
+    def test_lint_allows_placeholder_multi_component_secret_examples(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            example = repo / ".llm-wiki" / "raw" / "curated" / "placeholders.env"
+            example.write_text(
+                "\n".join(
+                    [
+                        "DATABASE_PASSWORD=REDACTED",
+                        "SLACK_BOT_TOKEN=changeme",
+                        "STRIPE_SECRET_KEY=your-token",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+
     def test_lint_allows_placeholder_key_value_secret_examples(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -795,6 +842,27 @@ class ProjectWikiLintTests(unittest.TestCase):
             ideas.write_text(
                 ideas.read_text(encoding="utf-8")
                 + "\nExisting implementation: `src/app.py`.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+            self.assertNotIn("missing_repo_path", output)
+
+    def test_lint_does_not_warn_for_existing_repo_path_line_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            source = repo / "src" / "app.py"
+            source.parent.mkdir()
+            source.write_text("print('ok')\n", encoding="utf-8")
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nExisting implementation: `src/app.py:12`.\n",
                 encoding="utf-8",
             )
 

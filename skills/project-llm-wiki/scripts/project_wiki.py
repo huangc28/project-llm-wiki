@@ -49,20 +49,24 @@ PRIVATE_KEY_PATTERN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
 CREDENTIAL_URL_PATTERN = re.compile(
     r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]+:[^\s/@]+@[^\s/@]+"
 )
+SECRET_KEY_NAME_PATTERN = (
+    r"(?:[a-z0-9]+[_-])*"
+    r"(?:"
+    r"password|passwd|pwd|token|bearer|api[_-]?key|access[_-]?key|"
+    r"private[_-]?key|secret(?:[_-]?(?:key|access[_-]?key))?"
+    r")"
+    r"(?:[_-][a-z0-9]+)*"
+)
 KEY_VALUE_SECRET_PATTERN = re.compile(
-    r"(?i)\b(?:"
-    r"password|passwd|pwd|secret|api[_-]?key|access[_-]?key|"
-    r"secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|"
-    r"github[_-]?token|openai[_-]?api[_-]?key|"
-    r"[a-z0-9]+[_-](?:api[_-]?key|token|secret)|"
-    r"token|bearer|private[_-]?key"
-    r")\b"
-    r"\s*[:=]\s*['\"]?([^'\"\s#]+)"
+    rf"(?i)\b{SECRET_KEY_NAME_PATTERN}\b\s*[:=]\s*['\"]?([^'\"\s#]+)"
 )
 KNOWN_TOKEN_PATTERN = re.compile(
     r"\b(?:sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b"
 )
 UPDATED_FRONTMATTER_PATTERN = re.compile(r"updated:\s*(\d{4}-\d{2}-\d{2})\s*")
+LINE_REFERENCE_PATTERN = re.compile(
+    r"^(?P<path>.+):(?P<line>[1-9][0-9]*)(?:-[1-9][0-9]*)?$"
+)
 RAW_SIZE_WARNING_BYTES = 100 * 1024
 STALE_AFTER_DAYS = 90
 SHELL_INTERPOLATION_CHARS = frozenset("$`{}()<>|;&")
@@ -594,6 +598,9 @@ def extract_markdown_code_references(markdown_text: str) -> list[str]:
 
 def normalize_repo_path_candidate(reference: str) -> str | None:
     candidate = reference.strip()
+    line_reference = LINE_REFERENCE_PATTERN.fullmatch(candidate)
+    if line_reference is not None:
+        candidate = line_reference.group("path")
     if candidate.startswith("./"):
         candidate = candidate[2:]
     if not candidate or "/" not in candidate:
