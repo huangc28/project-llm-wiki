@@ -43,6 +43,25 @@ REQUIRED_FILES = tuple(
 )
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
 WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
+RAW_SIZE_WARNING_BYTES = 100 * 1024
+INDEX_COVERAGE_DIRECTORIES = (
+    "architecture",
+    "domain",
+    "decisions",
+    "operations",
+    "features",
+    "summaries",
+)
+INDEX_COVERAGE_POLICY_PAGES = (
+    pathlib.Path("raw/README.md"),
+    pathlib.Path("raw/curated/README.md"),
+)
+INDEX_COVERAGE_EXCLUDED_PAGES = {
+    pathlib.Path("README.md"),
+    pathlib.Path("AGENTS.md"),
+    pathlib.Path("index.md"),
+    pathlib.Path("log.md"),
+}
 GENERATED_FILES = {
     pathlib.Path(".llm-wiki/summaries/repo-overview.md"),
     pathlib.Path(".llm-wiki/architecture/.gitkeep"),
@@ -311,6 +330,98 @@ def check_broken_wikilinks(
     return findings
 
 
+def index_link_for_page(wiki_relative_path: pathlib.Path) -> str:
+    return f"[[{wiki_relative_path.with_suffix('').as_posix()}]]"
+
+
+def is_index_coverage_candidate(
+    markdown_file: pathlib.Path, git_root: pathlib.Path
+) -> bool:
+    wiki_root = git_root / WIKI_ROOT
+    try:
+        wiki_relative_path = markdown_file.relative_to(wiki_root)
+    except ValueError:
+        return False
+
+    if wiki_relative_path.name == ".gitkeep":
+        return False
+    if wiki_relative_path in INDEX_COVERAGE_EXCLUDED_PAGES:
+        return False
+    if wiki_relative_path in INDEX_COVERAGE_POLICY_PAGES:
+        return True
+    if (
+        len(wiki_relative_path.parts) > 1
+        and wiki_relative_path.parts[0] in INDEX_COVERAGE_DIRECTORIES
+    ):
+        return True
+    return False
+
+
+def check_index_coverage(
+    git_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    wiki_root = git_root / WIKI_ROOT
+    index_path = wiki_root / "index.md"
+    index_text, read_error = read_wiki_text(index_path, git_root)
+    if read_error is not None:
+        return [read_error]
+    assert index_text is not None
+
+    linked_pages: set[str] = set()
+    for raw_target in extract_wikilinks(index_text):
+        normalized_target = normalize_wikilink_target(raw_target)
+        if wikilink_target_error(raw_target, normalized_target) is None:
+            linked_pages.add(normalized_target)
+
+    findings: list[dict[str, str]] = []
+    for markdown_file in markdown_files:
+        if not is_index_coverage_candidate(markdown_file, git_root):
+            continue
+        wiki_relative_path = markdown_file.relative_to(wiki_root)
+        normalized_path = wiki_relative_path.as_posix()
+        if normalized_path in linked_pages:
+            continue
+        link = index_link_for_page(wiki_relative_path)
+        findings.append(
+            make_finding(
+                "warning",
+                "missing_index_entry",
+                repo_relative_path(markdown_file, git_root),
+                "Main wiki page is not linked from .llm-wiki/index.md.",
+                (
+                    f"Add {link} to .llm-wiki/index.md when this page is "
+                    "durable main wiki knowledge."
+                ),
+            )
+        )
+    return findings
+
+
+def check_raw_file_sizes(git_root: pathlib.Path) -> list[dict[str, str]]:
+    wiki_root = git_root / WIKI_ROOT
+    findings: list[dict[str, str]] = []
+    for wiki_file in collect_wiki_files(git_root):
+        wiki_relative_path = wiki_file.relative_to(wiki_root)
+        if not wiki_relative_path.parts or wiki_relative_path.parts[0] != "raw":
+            continue
+        try:
+            size = wiki_file.stat().st_size
+        except OSError:
+            continue
+        if size <= RAW_SIZE_WARNING_BYTES:
+            continue
+        findings.append(
+            make_finding(
+                "warning",
+                "oversized_raw_file",
+                repo_relative_path(wiki_file, git_root),
+                f"Raw file is {size} bytes, larger than {RAW_SIZE_WARNING_BYTES} bytes.",
+                "Replace large raw material with a curated excerpt or summarize it in a durable wiki page.",
+            )
+        )
+    return findings
+
+
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     conflicts: list[str] = []
     for relative_path in REQUIRED_DIRECTORIES:
@@ -466,9 +577,13 @@ def run_lint(args) -> int:
         print("No .llm-wiki directory found in the resolved Git root.")
         return 2
 
-    _wiki_files = collect_wiki_files(git_root)
     markdown_files = collect_markdown_files(git_root)
-    findings = sort_findings(check_broken_wikilinks(git_root, markdown_files))
+    findings = [
+        *check_broken_wikilinks(git_root, markdown_files),
+        *check_index_coverage(git_root, markdown_files),
+        *check_raw_file_sizes(git_root),
+    ]
+    findings = sort_findings(findings)
     render_findings(findings, args.json)
     return 1 if any(finding["severity"] == "error" for finding in findings) else 0
 
