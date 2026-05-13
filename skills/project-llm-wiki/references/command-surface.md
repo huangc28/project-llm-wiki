@@ -68,7 +68,31 @@ The helper does not generate final semantic answers. Agents still read the retur
 
 ### project-wiki-ingest
 
-Planned mode for updating existing wiki pages from curated, de-secreted project sources before creating new pages.
+Implemented mode for updating existing wiki pages from curated, de-secreted project sources before creating new pages.
+
+Ingest curated text into an existing page:
+
+`project-wiki ingest --text TEXT --title TITLE --target-page PAGE --key-idea TEXT`
+
+Ingest curated file content:
+
+`project-wiki ingest --file PATH --title TITLE --target-page PAGE --key-idea TEXT`
+
+Use a URL as provenance with curated text:
+
+`project-wiki ingest --url URL --text CURATED_TEXT --title TITLE --target-page PAGE --key-idea TEXT`
+
+Create a new durable page only with an explicit reason:
+
+`project-wiki ingest --text TEXT --title TITLE --new-page PAGE --new-page-reason TEXT --key-idea TEXT`
+
+Preserve a short curated raw source note when policy allows:
+
+`project-wiki ingest --text TEXT --title TITLE --target-page PAGE --key-idea TEXT --preserve-raw`
+
+Video sources require transcript, summary, or curated notes before core ingest. `$watch-video` can be a user-local preprocessor, but it is not a dependency of Project LLM Wiki core ingest.
+
+`--preserve-raw` is optional and policy-gated. The helper rejects secrets, full transcripts, full logs, dumps, private data, active task state, execution checkpoints, oversized source material, and more than 15 touched pages.
 
 ### project-wiki-promote
 
@@ -90,6 +114,5 @@ Potential future aliases:
 
 Full command behavior is deferred to later phases:
 
-- Query and ingest loop: Phase 4
 - Promotion of validated learnings into `.llm-wiki/`
 - AGENTS integration and real repo validation: Phase 5

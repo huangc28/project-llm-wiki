@@ -46,13 +46,28 @@ Query protocol:
 
 Do not store full transcripts, complete question/answer chat history, or unvalidated task notes in `.llm-wiki/log.md`.
 
-`project-wiki-ingest` updates durable wiki pages from curated, de-secreted project sources. Full behavior is implemented in Phase 4.
+`project-wiki-ingest` updates durable wiki pages from curated, de-secreted project sources.
+
+Ingest protocol:
+
+1. Accept curated text, curated file content, or URL provenance paired with curated text.
+2. Video sources require transcript, summary, or curated notes before core ingest.
+3. `$watch-video` can be a user-local preprocessor, but Project LLM Wiki core ingest must not depend on it.
+4. Ingest updates existing pages before creating new pages.
+5. Create a new page only with an explicit reason that no existing page covers the concept or the concept deserves a durable cross-page home.
+6. Every touched page gets concise provenance such as `Updated from <title> YYYY-MM-DD`.
+7. `index.md` is updated only for newly created pages.
+8. `log.md` records pages touched and key ideas.
+
+Raw curated storage is optional and policy-gated with `--preserve-raw`. Never store full transcripts, full logs, dumps, secrets, private data, active task state, execution checkpoints, or large unreviewed raw material. The page hard cap is 15 touched pages.
 
 ## Safety Boundaries
 
 Do not initialize `.llm-wiki/` in a multi-repo parent directory unless the parent is the intended git repository.
 
 Do not store secrets, credentials, private customer data, auth tokens, full logs, database exports, generated dumps, or unvalidated task notes in `.llm-wiki/`.
+
+For ingest, Never store full transcripts, full logs, dumps, secrets, private data, active task state, or execution checkpoints. The blast-radius hard cap is 15 touched pages.
 
 Do not install or modify global skill directories during Phase 1.
 
