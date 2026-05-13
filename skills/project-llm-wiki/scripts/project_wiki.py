@@ -126,6 +126,19 @@ PLACEHOLDER_SECRET_VALUES = {
     "your-token",
     "your_token",
 }
+DISALLOWED_RAW_PHRASES = (
+    "active task state",
+    "database dump",
+    "execution checkpoint",
+    "full log",
+    "full logs",
+    "full transcript",
+    "full transcripts",
+    "private customer data",
+    "private data",
+    "unreviewed dump",
+)
+VIDEO_URL_MARKERS = ("youtube.com", "youtu.be", "vimeo.com")
 
 
 def planned_command(name: str, phase: str) -> int:
@@ -1043,6 +1056,118 @@ def run_query(args) -> int:
     return 0
 
 
+def is_video_url(url: str) -> bool:
+    normalized_url = url.lower()
+    return any(marker in normalized_url for marker in VIDEO_URL_MARKERS)
+
+
+def has_disallowed_raw_policy_content(text: str) -> bool:
+    normalized_text = text.lower()
+    return any(phrase in normalized_text for phrase in DISALLOWED_RAW_PHRASES)
+
+
+def validate_curated_source_text(text: str) -> str | None:
+    encoded_size = len(text.encode("utf-8"))
+    if encoded_size > RAW_SIZE_WARNING_BYTES:
+        return "Unsafe raw material was not stored. Curated source text is larger than the raw size policy allows."
+    if has_secret_like_content(text):
+        return "Unsafe raw material was not stored. Curated source text contains secret-looking material."
+    if has_disallowed_raw_policy_content(text):
+        return "Unsafe raw material was not stored. Curated source text appears to contain transcripts, logs, dumps, private data, or active task state."
+    return None
+
+
+def normalize_source_record(args) -> tuple[dict[str, str] | None, str | None]:
+    if not args.text and not args.file and not args.url:
+        return None, "Provide one of --text, --file, or --url."
+    if args.file and args.text:
+        return None, "Use either --file or --text for curated source text, not both."
+
+    source_text = ""
+    kind = "text"
+    provenance = "inline text"
+
+    if args.file:
+        source_path = pathlib.Path(args.file)
+        try:
+            source_text = source_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return None, f"Could not read curated source file: {args.file}"
+        kind = "file"
+        provenance = source_path.as_posix()
+    elif args.url:
+        kind = "url"
+        provenance = args.url
+        if args.text:
+            source_text = args.text
+        elif is_video_url(args.url):
+            return (
+                None,
+                "Provide a transcript, summary, or curated notes before ingesting video sources.",
+            )
+    else:
+        source_text = args.text
+
+    if source_text:
+        unsafe_error = validate_curated_source_text(source_text)
+        if unsafe_error is not None:
+            return None, unsafe_error
+
+    return {
+        "kind": kind,
+        "title": args.title,
+        "provenance": provenance,
+        "text": source_text,
+    }, None
+
+
+def render_ingest_result(result: dict[str, object], as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
+
+    print("Ingest source accepted.")
+    print(f"Source kind: {result['kind']}")
+    print(f"Title: {result['title']}")
+    print(f"Provenance: {result['provenance']}")
+    print(f"Raw preservation: {result['raw_preservation']}")
+
+
+def run_ingest(args) -> int:
+    cwd = pathlib.Path.cwd()
+    git_root, _message = resolve_git_root(cwd)
+    if git_root is None:
+        print("No git repository found for current directory.")
+        return 2
+
+    wiki_root = git_root / WIKI_ROOT
+    if (
+        not wiki_root.exists()
+        or not wiki_root.is_dir()
+        or wiki_root.is_symlink()
+        or not path_is_under(wiki_root, git_root)
+    ):
+        print("No .llm-wiki directory found in the resolved Git root.")
+        return 2
+
+    source_record, error = normalize_source_record(args)
+    if error is not None:
+        print(error)
+        return 2
+    assert source_record is not None
+
+    result: dict[str, object] = {
+        "kind": source_record["kind"],
+        "title": source_record["title"],
+        "provenance": source_record["provenance"],
+        "raw_preservation": "skipped",
+        "target_pages": args.target_page,
+        "new_page": args.new_page,
+    }
+    render_ingest_result(result, args.json)
+    return 0
+
+
 def run_init(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -1173,8 +1298,48 @@ def build_parser():
     )
     query.set_defaults(func=run_query)
 
-    ingest = subcommands.add_parser("ingest", help="planned project-wiki-ingest mode")
-    ingest.set_defaults(func=lambda _args: planned_command("project-wiki-ingest", "Phase 4"))
+    ingest = subcommands.add_parser(
+        "ingest", help="ingest curated source material into .llm-wiki"
+    )
+    ingest.add_argument("--text", help="curated source text")
+    ingest.add_argument("--file", help="path to curated source text file")
+    ingest.add_argument(
+        "--url",
+        help="source URL used as provenance; pair with --text for curated content",
+    )
+    ingest.add_argument("--title", required=True, help="short source title")
+    ingest.add_argument(
+        "--target-page",
+        action="append",
+        default=[],
+        help="existing wiki page to update",
+    )
+    ingest.add_argument(
+        "--new-page",
+        default="",
+        help="new wiki page to create only when no existing page covers the concept",
+    )
+    ingest.add_argument("--new-page-title", default="", help="heading for --new-page")
+    ingest.add_argument(
+        "--new-page-reason",
+        default="",
+        help="explicit reason the new page is warranted",
+    )
+    ingest.add_argument(
+        "--key-idea", required=True, help="concise durable idea to add and log"
+    )
+    ingest.add_argument(
+        "--preserve-raw",
+        action="store_true",
+        help="preserve short curated source note when policy allows",
+    )
+    ingest.add_argument(
+        "--summary-page",
+        action="store_true",
+        help="mark --new-page as a cross-cutting summary page",
+    )
+    ingest.add_argument("--json", action="store_true", help="render ingest result as JSON")
+    ingest.set_defaults(func=run_ingest)
 
     return parser
 
