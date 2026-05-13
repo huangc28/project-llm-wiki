@@ -407,6 +407,207 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertIn("Provenance: inline text", raw_text)
             self.assertIn("Short curated source note.", raw_text)
 
+    def test_ingest_prefers_existing_pages_over_new_pages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Existing Preference Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Existing page update is preferred.",
+            )
+            ideas = (repo / ".llm-wiki" / "features" / "ideas.md").read_text(
+                encoding="utf-8"
+            )
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn("Existing page update is preferred.", ideas)
+            self.assertFalse((repo / ".llm-wiki" / "features" / "auto-created.md").exists())
+
+    def test_ingest_creates_summary_page_only_with_cross_cutting_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            missing_flag = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Summary Source",
+                "--new-page",
+                "summaries/source-note",
+                "--new-page-reason",
+                "cross-cutting source",
+                "--key-idea",
+                "Summary pages need the summary flag.",
+            )
+            summary_result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Summary Source",
+                "--new-page",
+                "summaries/source-note",
+                "--new-page-reason",
+                "cross-cutting source",
+                "--summary-page",
+                "--key-idea",
+                "Summary pages capture cross-cutting sources.",
+            )
+            durable_result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Durable Page Source",
+                "--new-page",
+                "features/durable-note",
+                "--new-page-reason",
+                "no existing page covers this concept",
+                "--key-idea",
+                "Non-summary durable pages do not need the summary flag.",
+            )
+
+            self.assertEqual(2, missing_flag.returncode, missing_flag.stdout)
+            self.assertIn("Summary pages require --summary-page.", missing_flag.stdout)
+            self.assertEqual(0, summary_result.returncode, summary_result.stdout)
+            self.assertTrue(
+                (repo / ".llm-wiki" / "summaries" / "source-note.md").is_file()
+            )
+            self.assertEqual(0, durable_result.returncode, durable_result.stdout)
+            self.assertTrue(
+                (repo / ".llm-wiki" / "features" / "durable-note.md").is_file()
+            )
+
+    def test_ingest_new_page_adds_index_link_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            for key_idea in ("First durable idea.", "Second durable idea."):
+                result = self.run_helper(
+                    repo,
+                    "ingest",
+                    "--text",
+                    "Curated source note.",
+                    "--title",
+                    "Index Source",
+                    "--new-page",
+                    "features/indexed-topic",
+                    "--new-page-title",
+                    "Indexed Topic",
+                    "--new-page-reason",
+                    "no existing page covers this concept",
+                    "--key-idea",
+                    key_idea,
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+            index_text = (repo / ".llm-wiki" / "index.md").read_text(encoding="utf-8")
+            self.assertEqual(1, index_text.count("[[features/indexed-topic]]"))
+
+    def test_ingest_raw_copy_is_optional(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Short curated source note.",
+                "--title",
+                "Optional Raw Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Raw copy is optional.",
+            )
+            raw_path = repo / ".llm-wiki" / "raw" / "curated" / "optional-raw-source.md"
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertFalse(raw_path.exists())
+
+    def test_ingest_url_provenance_does_not_fetch_or_store_full_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--url",
+                "https://example.com/source",
+                "--title",
+                "URL Only Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Stable URLs can be provenance only.",
+            )
+            raw_path = repo / ".llm-wiki" / "raw" / "curated" / "url-only-source.md"
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn("Provenance: https://example.com/source", result.stdout)
+            self.assertFalse(raw_path.exists())
+
+    def test_ingest_boundary_rejects_parent_directory_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Boundary Source",
+                "--target-page",
+                "../outside",
+                "--key-idea",
+                "Outside pages must be rejected.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("target must stay inside .llm-wiki", output)
+
+    def test_ingest_boundary_rejects_checkpoint_or_full_log_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Full log with execution checkpoint and active task state.",
+                "--title",
+                "Checkpoint Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Checkpoint text must be rejected.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe raw material was not stored.", output)
+
 
 if __name__ == "__main__":
     unittest.main()

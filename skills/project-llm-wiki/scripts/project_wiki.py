@@ -1245,6 +1245,9 @@ def run_ingest(args) -> int:
     if args.new_page and not args.new_page_reason:
         print("New page creation requires --new-page-reason.")
         return 2
+    if args.new_page.startswith("summaries/") and not args.summary_page:
+        print("Summary pages require --summary-page.")
+        return 2
 
     touched_pages: list[str] = []
     for page in args.target_page:
