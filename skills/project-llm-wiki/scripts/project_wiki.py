@@ -1131,6 +1131,85 @@ def render_ingest_result(result: dict[str, object], as_json: bool) -> None:
     print(f"Title: {result['title']}")
     print(f"Provenance: {result['provenance']}")
     print(f"Raw preservation: {result['raw_preservation']}")
+    touched_pages = result.get("touched_pages", [])
+    if isinstance(touched_pages, list):
+        print("Pages touched:")
+        for page in touched_pages:
+            print(f"- {page}")
+
+
+def wiki_page_path(
+    git_root: pathlib.Path, page: str
+) -> tuple[pathlib.Path | None, str | None]:
+    try:
+        wikilink = format_wikilink_page(page)
+    except ValueError as error:
+        return None, str(error)
+
+    normalized_target = normalize_wikilink_target(wikilink[2:-2])
+    page_path = git_root / WIKI_ROOT / pathlib.Path(normalized_target)
+    wiki_root = git_root / WIKI_ROOT
+    if not path_is_under(page_path, wiki_root):
+        return None, "target must stay inside .llm-wiki"
+    return page_path, None
+
+
+def append_page_update(path: pathlib.Path, content: str, provenance: str) -> None:
+    update_date = datetime.date.today().isoformat()
+    entry = "\n".join(
+        [
+            "",
+            f"## Update {update_date}",
+            trim_summary_text(content, LOG_INSIGHT_MAX_CHARS),
+            "",
+            f"_Updated from {provenance} {update_date}._",
+            "",
+        ]
+    )
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(entry)
+
+
+def update_index_for_new_page(git_root: pathlib.Path, page: str, title: str) -> None:
+    index_path = git_root / WIKI_ROOT / "index.md"
+    wikilink = format_wikilink_page(page)
+    index_text = index_path.read_text(encoding="utf-8")
+    if wikilink in index_text:
+        return
+    with index_path.open("a", encoding="utf-8") as handle:
+        handle.write(f"\n- {wikilink} - {title}\n")
+
+
+def slugify_title(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return slug or "curated-source"
+
+
+def preserve_curated_raw_source(
+    git_root: pathlib.Path, title: str, text: str, provenance: str
+) -> tuple[str | None, str | None]:
+    unsafe_error = validate_curated_source_text(text)
+    if unsafe_error is not None:
+        return None, unsafe_error
+
+    raw_root = git_root / WIKI_ROOT / "raw" / "curated"
+    raw_root.mkdir(parents=True, exist_ok=True)
+    raw_path = raw_root / f"{slugify_title(title)}.md"
+    raw_note = "\n".join(
+        [
+            f"# {title}",
+            "",
+            f"Provenance: {provenance}",
+            f"Date: {datetime.date.today().isoformat()}",
+            "",
+            "## Curated Source",
+            "",
+            text,
+            "",
+        ]
+    )
+    raw_path.write_text(raw_note, encoding="utf-8")
+    return repo_relative_path(raw_path, git_root), None
 
 
 def run_ingest(args) -> int:
@@ -1156,13 +1235,88 @@ def run_ingest(args) -> int:
         return 2
     assert source_record is not None
 
+    touched_page_names = list(args.target_page)
+    if args.new_page:
+        touched_page_names.append(args.new_page)
+    if len(touched_page_names) > 15:
+        print("Ingest touches more than the 15 page hard cap.")
+        return 2
+
+    if args.new_page and not args.new_page_reason:
+        print("New page creation requires --new-page-reason.")
+        return 2
+
+    touched_pages: list[str] = []
+    for page in args.target_page:
+        target_path, target_error = wiki_page_path(git_root, page)
+        if target_error is not None:
+            print(target_error)
+            return 2
+        assert target_path is not None
+        if not target_path.is_file() or target_path.is_symlink():
+            print(f"Target page does not exist: {format_wikilink_page(page)}")
+            return 2
+        append_page_update(target_path, args.key_idea, args.title)
+        touched_pages.append(format_wikilink_page(page))
+
+    if args.new_page:
+        new_path, new_error = wiki_page_path(git_root, args.new_page)
+        if new_error is not None:
+            print(new_error)
+            return 2
+        assert new_path is not None
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_title = args.new_page_title or args.title
+        if new_path.exists():
+            append_page_update(new_path, args.key_idea, args.title)
+        else:
+            new_path.write_text(
+                "\n".join(
+                    [
+                        f"# {new_title}",
+                        "",
+                        args.key_idea,
+                        "",
+                        f"_Updated from {args.title} {datetime.date.today().isoformat()}._",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            update_index_for_new_page(git_root, args.new_page, new_title)
+        touched_pages.append(format_wikilink_page(args.new_page))
+
+    raw_preservation = "skipped"
+    if args.preserve_raw and source_record["text"]:
+        raw_path, raw_error = preserve_curated_raw_source(
+            git_root,
+            args.title,
+            source_record["text"],
+            source_record["provenance"],
+        )
+        if raw_error is not None:
+            print(raw_error)
+            return 2
+        assert raw_path is not None
+        raw_preservation = raw_path
+
+    if touched_pages:
+        append_wiki_log_entry(
+            git_root,
+            "ingest",
+            args.title,
+            touched_pages,
+            args.key_idea,
+        )
+
     result: dict[str, object] = {
         "kind": source_record["kind"],
         "title": source_record["title"],
         "provenance": source_record["provenance"],
-        "raw_preservation": "skipped",
+        "raw_preservation": raw_preservation,
         "target_pages": args.target_page,
         "new_page": args.new_page,
+        "touched_pages": touched_pages,
     }
     render_ingest_result(result, args.json)
     return 0
