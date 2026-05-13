@@ -583,21 +583,33 @@ def check_stale_pages(
 
 
 def is_markdown_fence(line: str) -> bool:
+    return markdown_fence_marker(line) is not None
+
+
+def markdown_fence_marker(line: str) -> str | None:
     stripped = line.lstrip()
-    return stripped.startswith("```") or stripped.startswith("~~~")
+    if stripped.startswith("```"):
+        return "```"
+    if stripped.startswith("~~~"):
+        return "~~~"
+    return None
 
 
 def extract_markdown_code_references(markdown_text: str) -> list[str]:
     references: list[str] = []
-    in_fence = False
+    active_fence_marker: str | None = None
     for line in markdown_text.splitlines():
-        if is_markdown_fence(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
+        fence_marker = markdown_fence_marker(line)
+        if active_fence_marker is not None:
+            if fence_marker == active_fence_marker:
+                active_fence_marker = None
+                continue
             reference = line.strip()
             if reference:
                 references.append(reference)
+            continue
+        if fence_marker is not None:
+            active_fence_marker = fence_marker
             continue
         for match in INLINE_CODE_SPAN_PATTERN.finditer(line):
             reference = match.group(1).strip()
@@ -839,18 +851,23 @@ def run_lint(args) -> int:
     wiki_files, inventory_findings = collect_wiki_files(git_root)
     readable_wiki_files: list[pathlib.Path] = []
     read_error_findings: list[dict[str, str]] = []
+    unreadable_wiki_files: set[pathlib.Path] = set()
     for wiki_file in wiki_files:
         _text, read_error = read_wiki_text(wiki_file, git_root)
         if read_error is not None:
             read_error_findings.append(read_error)
+            unreadable_wiki_files.add(wiki_file)
         else:
             readable_wiki_files.append(wiki_file)
     markdown_files = [path for path in readable_wiki_files if path.suffix == ".md"]
+    index_coverage_findings = []
+    if wiki_root / "index.md" not in unreadable_wiki_files:
+        index_coverage_findings = check_index_coverage(git_root, markdown_files)
     findings = [
         *inventory_findings,
         *read_error_findings,
         *check_broken_wikilinks(git_root, markdown_files),
-        *check_index_coverage(git_root, markdown_files),
+        *index_coverage_findings,
         *check_raw_file_sizes(git_root, readable_wiki_files),
         *check_secret_like_content(git_root, readable_wiki_files),
         *check_stale_pages(git_root, markdown_files),

@@ -321,6 +321,28 @@ class ProjectWikiLintTests(unittest.TestCase):
                 {finding["code"] for finding in payload["findings"]},
             )
 
+    def test_lint_reports_unreadable_index_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            index = repo / ".llm-wiki" / "index.md"
+            index.chmod(0)
+            try:
+                result = self.run_helper(repo, "lint", "--json")
+            finally:
+                index.chmod(0o644)
+            payload = json.loads(result.stdout)
+            index_findings = [
+                finding
+                for finding in payload["findings"]
+                if finding["path"] == ".llm-wiki/index.md"
+            ]
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", result.stderr)
+            self.assertEqual(1, len(index_findings), payload)
+            self.assertEqual("unreadable_wiki_file", index_findings[0]["code"])
+
     def test_lint_ignores_general_markdown_links(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -829,6 +851,42 @@ class ProjectWikiLintTests(unittest.TestCase):
             ideas.write_text(
                 ideas.read_text(encoding="utf-8")
                 + "\n~~~text\nsrc/missing.py\n~~~\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: missing_repo_path", output)
+            self.assertIn("src/missing.py", output)
+
+    def test_lint_keeps_backtick_fence_open_across_tilde_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\n```markdown\n~~~text\nsrc/missing.py\n```\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: missing_repo_path", output)
+            self.assertIn("src/missing.py", output)
+
+    def test_lint_keeps_tilde_fence_open_across_backtick_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\n~~~markdown\n```text\nsrc/missing.py\n~~~\n",
                 encoding="utf-8",
             )
 
