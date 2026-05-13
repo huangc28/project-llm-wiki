@@ -49,6 +49,19 @@ PRIVATE_KEY_PATTERN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
 CREDENTIAL_URL_PATTERN = re.compile(
     r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]+:[^\s/@]+@[^\s/@]+"
 )
+KEY_VALUE_SECRET_PATTERN = re.compile(
+    r"(?i)\b(?:"
+    r"password|passwd|pwd|secret|api[_-]?key|access[_-]?key|"
+    r"secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|"
+    r"github[_-]?token|openai[_-]?api[_-]?key|"
+    r"[a-z0-9]+[_-](?:api[_-]?key|token|secret)|"
+    r"token|bearer|private[_-]?key"
+    r")\b"
+    r"\s*[:=]\s*['\"]?([^'\"\s#]+)"
+)
+KNOWN_TOKEN_PATTERN = re.compile(
+    r"\b(?:sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b"
+)
 UPDATED_FRONTMATTER_PATTERN = re.compile(r"updated:\s*(\d{4}-\d{2}-\d{2})\s*")
 RAW_SIZE_WARNING_BYTES = 100 * 1024
 STALE_AFTER_DAYS = 90
@@ -92,6 +105,16 @@ TEXT_FINDING_LABELS = (
     ("remediation", "remediation:"),
 )
 SEVERITY_SORT_RANK = {"error": 0, "warning": 1}
+PLACEHOLDER_SECRET_VALUES = {
+    "<redacted>",
+    "changeme",
+    "example",
+    "placeholder",
+    "redacted",
+    "replace-me",
+    "your-token",
+    "your_token",
+}
 
 
 def planned_command(name: str, phase: str) -> int:
@@ -225,9 +248,12 @@ def make_finding(
     }
 
 
-def collect_wiki_files(git_root: pathlib.Path) -> list[pathlib.Path]:
+def collect_wiki_files(
+    git_root: pathlib.Path,
+) -> tuple[list[pathlib.Path], list[dict[str, str]]]:
     wiki_root = git_root / WIKI_ROOT
     files: list[pathlib.Path] = []
+    findings: list[dict[str, str]] = []
     pending = [wiki_root]
 
     while pending:
@@ -235,6 +261,15 @@ def collect_wiki_files(git_root: pathlib.Path) -> list[pathlib.Path]:
         try:
             entries = sorted(current.iterdir(), key=lambda path: path.as_posix())
         except OSError:
+            findings.append(
+                make_finding(
+                    "error",
+                    "unreadable_wiki_directory",
+                    repo_relative_path(current, git_root),
+                    "Wiki directory could not be listed during lint.",
+                    "Fix directory permissions or remove the unreadable directory before running project-wiki lint.",
+                )
+            )
             continue
         for entry in entries:
             if entry.is_symlink() or not path_is_under(entry, wiki_root):
@@ -244,11 +279,12 @@ def collect_wiki_files(git_root: pathlib.Path) -> list[pathlib.Path]:
             elif entry.is_file():
                 files.append(entry)
 
-    return sorted(files, key=lambda path: path.relative_to(git_root).as_posix())
+    return sorted(files, key=lambda path: path.relative_to(git_root).as_posix()), findings
 
 
 def collect_markdown_files(git_root: pathlib.Path) -> list[pathlib.Path]:
-    return [path for path in collect_wiki_files(git_root) if path.suffix == ".md"]
+    wiki_files, _findings = collect_wiki_files(git_root)
+    return [path for path in wiki_files if path.suffix == ".md"]
 
 
 def collect_lint_files(git_root: pathlib.Path) -> list[pathlib.Path]:
@@ -280,7 +316,7 @@ def normalize_wikilink_target(raw_target: str) -> str:
     if not target:
         return ""
     pure_target = pathlib.PurePosixPath(target)
-    if pure_target.suffix:
+    if pure_target.suffix == ".md":
         return pure_target.as_posix()
     return f"{pure_target.as_posix()}.md"
 
@@ -415,10 +451,12 @@ def check_index_coverage(
     return findings
 
 
-def check_raw_file_sizes(git_root: pathlib.Path) -> list[dict[str, str]]:
+def check_raw_file_sizes(
+    git_root: pathlib.Path, wiki_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
     wiki_root = git_root / WIKI_ROOT
     findings: list[dict[str, str]] = []
-    for wiki_file in collect_wiki_files(git_root):
+    for wiki_file in wiki_files:
         wiki_relative_path = wiki_file.relative_to(wiki_root)
         if not wiki_relative_path.parts or wiki_relative_path.parts[0] != "raw":
             continue
@@ -440,6 +478,24 @@ def check_raw_file_sizes(git_root: pathlib.Path) -> list[dict[str, str]]:
     return findings
 
 
+def is_placeholder_secret_value(value: str) -> bool:
+    normalized = value.strip().strip("'\"").lower()
+    return normalized in PLACEHOLDER_SECRET_VALUES or normalized.startswith(
+        ("example_", "example-", "your_", "your-")
+    )
+
+
+def has_secret_like_content(text: str) -> bool:
+    if PRIVATE_KEY_PATTERN.search(text) or CREDENTIAL_URL_PATTERN.search(text):
+        return True
+    if KNOWN_TOKEN_PATTERN.search(text):
+        return True
+    for match in KEY_VALUE_SECRET_PATTERN.finditer(text):
+        if not is_placeholder_secret_value(match.group(1)):
+            return True
+    return False
+
+
 def check_secret_like_content(
     git_root: pathlib.Path, wiki_files: list[pathlib.Path]
 ) -> list[dict[str, str]]:
@@ -451,9 +507,7 @@ def check_secret_like_content(
             findings.append(read_error)
             continue
         assert text is not None
-        if not (
-            PRIVATE_KEY_PATTERN.search(text) or CREDENTIAL_URL_PATTERN.search(text)
-        ):
+        if not has_secret_like_content(text):
             continue
         findings.append(
             make_finding(
@@ -765,12 +819,13 @@ def run_lint(args) -> int:
         print("No .llm-wiki directory found in the resolved Git root.")
         return 2
 
-    wiki_files = collect_wiki_files(git_root)
+    wiki_files, inventory_findings = collect_wiki_files(git_root)
     markdown_files = [path for path in wiki_files if path.suffix == ".md"]
     findings = [
+        *inventory_findings,
         *check_broken_wikilinks(git_root, markdown_files),
         *check_index_coverage(git_root, markdown_files),
-        *check_raw_file_sizes(git_root),
+        *check_raw_file_sizes(git_root, wiki_files),
         *check_secret_like_content(git_root, wiki_files),
         *check_stale_pages(git_root, markdown_files),
         *check_repo_path_drift(git_root, markdown_files),

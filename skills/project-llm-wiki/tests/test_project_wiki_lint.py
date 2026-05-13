@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -210,6 +211,24 @@ class ProjectWikiLintTests(unittest.TestCase):
                         "",
                     ]
                 ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+
+    def test_lint_supports_dotted_markdown_page_wikilinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            dotted = repo / ".llm-wiki" / "features" / "api.v2.md"
+            dotted.write_text("# API v2\n", encoding="utf-8")
+            index = repo / ".llm-wiki" / "index.md"
+            index.write_text(
+                index.read_text(encoding="utf-8") + "\n- API v2: [[features/api.v2]]\n",
                 encoding="utf-8",
             )
 
@@ -454,6 +473,54 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
             self.assertIn("redact", output)
 
+    def test_lint_reports_key_value_secret_in_markdown_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\nDo not keep OPENAI_API_KEY=sk-liveexample01234567890 here.\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/features/ideas.md", output)
+
+    def test_lint_reports_key_value_secret_in_non_markdown_raw_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "unsafe.env"
+            unsafe.write_text(
+                "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/unsafe.env", output)
+
+    def test_lint_allows_placeholder_key_value_secret_examples(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            example = repo / ".llm-wiki" / "raw" / "curated" / "example.env"
+            example.write_text("API_KEY=REDACTED\nTOKEN=changeme\n", encoding="utf-8")
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("No issues found in .llm-wiki/", output)
+
     def test_secret_like_raw_file_fixture_covers_test_05(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -545,6 +612,33 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: unreadable_wiki_file", output)
             self.assertIn(".llm-wiki/raw/curated/locked.env", output)
             self.assertNotIn("Traceback", output)
+
+    def test_collect_wiki_files_reports_unreadable_directory(self):
+        helper = self.load_helper_module()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            locked_dir = repo / ".llm-wiki" / "raw" / "locked-dir"
+            locked_dir.mkdir()
+            original_iterdir = Path.iterdir
+
+            def fake_iterdir(path):
+                if path == locked_dir:
+                    raise OSError("permission denied")
+                return original_iterdir(path)
+
+            with mock.patch.object(Path, "iterdir", fake_iterdir):
+                _files, findings = helper.collect_wiki_files(repo)
+
+            self.assertTrue(
+                any(
+                    finding["code"] == "unreadable_wiki_directory"
+                    and finding["path"] == ".llm-wiki/raw/locked-dir"
+                    for finding in findings
+                ),
+                findings,
+            )
 
     def test_lint_reports_stale_updated_frontmatter_warning(self):
         with tempfile.TemporaryDirectory() as tmp:
