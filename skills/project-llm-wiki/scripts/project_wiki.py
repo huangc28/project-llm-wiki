@@ -1310,7 +1310,7 @@ def run_ingest(args) -> int:
             print("Summary pages require --summary-page.")
             return 2
 
-    touched_pages: list[str] = []
+    target_paths: list[tuple[str, pathlib.Path]] = []
     for page in args.target_page:
         target_path, target_error = wiki_page_path(git_root, page)
         if target_error is not None:
@@ -1320,6 +1320,10 @@ def run_ingest(args) -> int:
         if not target_path.is_file() or target_path.is_symlink():
             print(f"Target page does not exist: {format_wikilink_page(page)}")
             return 2
+        target_paths.append((page, target_path))
+
+    touched_pages: list[str] = []
+    for page, target_path in target_paths:
         append_page_update(target_path, args.key_idea, args.title)
         touched_pages.append(format_wikilink_page(page))
 

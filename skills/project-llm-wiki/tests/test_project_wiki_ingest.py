@@ -362,6 +362,38 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertIn("Provide at least one --target-page or --new-page.", output)
             self.assertNotIn("Ingest source accepted.", output)
 
+    def test_ingest_missing_later_target_leaves_prior_pages_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas_path = repo / ".llm-wiki" / "features" / "ideas.md"
+            log_path = repo / ".llm-wiki" / "log.md"
+            ideas_before = ideas_path.read_text(encoding="utf-8")
+            log_before = log_path.read_text(encoding="utf-8")
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Partial Write Source",
+                "--target-page",
+                "features/ideas",
+                "--target-page",
+                "features/missing",
+                "--key-idea",
+                "Failed ingests must not partially update wiki pages.",
+            )
+            output = result.stdout + result.stderr
+            ideas_after = ideas_path.read_text(encoding="utf-8")
+            log_after = log_path.read_text(encoding="utf-8")
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Target page does not exist: [[features/missing]]", output)
+            self.assertEqual(ideas_before, ideas_after)
+            self.assertEqual(log_before, log_after)
+
     def test_ingest_rejects_more_than_fifteen_touched_pages(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
