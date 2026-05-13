@@ -202,6 +202,46 @@ class ProjectWikiInitTests(unittest.TestCase):
             self.assertIn(".llm-wiki/README.md: expected real file, found symlink", output)
             self.assertFalse(outside_file.exists())
 
+    def test_init_rejects_invalid_existing_index_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            wiki = repo / ".llm-wiki"
+            wiki.mkdir()
+            (wiki / "index.md").write_bytes(b"\xff\xfeinvalid index\n")
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn(
+                ".llm-wiki/index.md: expected UTF-8 markdown, could not read",
+                output,
+            )
+            self.assertNotIn("Traceback", output)
+            self.assertFalse((wiki / "README.md").exists())
+            self.assertFalse((wiki / "raw").exists())
+
+    def test_dry_run_rejects_invalid_existing_index_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            wiki = repo / ".llm-wiki"
+            wiki.mkdir()
+            (wiki / "index.md").write_bytes(b"\xff\xfeinvalid index\n")
+
+            result = self.run_helper(repo, "init", "--dry-run")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Would create paths:", output)
+            self.assertIn(
+                ".llm-wiki/index.md: expected UTF-8 markdown, could not read",
+                output,
+            )
+            self.assertNotIn("Traceback", output)
+            self.assertFalse((wiki / "README.md").exists())
+
     def test_clean_repo_status_shows_llm_wiki_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

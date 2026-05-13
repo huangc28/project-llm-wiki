@@ -189,13 +189,16 @@ def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     return conflicts
 
 
-def collect_missing_index_links(git_root: pathlib.Path) -> list[str]:
+def collect_missing_index_links(git_root: pathlib.Path) -> tuple[list[str], str | None]:
     index_path = git_root / ".llm-wiki" / "index.md"
     if not index_path.is_file():
-        return []
+        return [], None
 
-    index_text = index_path.read_text(encoding="utf-8")
-    return [link for link in RECOMMENDED_INDEX_LINKS if link not in index_text]
+    try:
+        index_text = index_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return [], ".llm-wiki/index.md: expected UTF-8 markdown, could not read"
+    return [link for link in RECOMMENDED_INDEX_LINKS if link not in index_text], None
 
 
 def collect_init_paths(
@@ -297,7 +300,10 @@ def run_init(args) -> int:
         if missing_templates:
             print_text_section("Template assets missing:", missing_templates)
             return 2
-        missing_index_links = collect_missing_index_links(git_root)
+        missing_index_links, index_read_error = collect_missing_index_links(git_root)
+        if index_read_error:
+            print_text_section("Conflicts:", [index_read_error])
+            return 2
         if missing_index_links:
             print_text_section("Missing recommended index links:", missing_index_links)
         print("Next: review .llm-wiki/index.md")
@@ -311,11 +317,15 @@ def run_init(args) -> int:
         print_text_section("Template assets missing:", missing_templates)
         return 2
 
+    missing_index_links, index_read_error = collect_missing_index_links(git_root)
+    if index_read_error:
+        print_text_section("Conflicts:", [index_read_error])
+        return 2
+
     created, skipped = apply_init_plan(git_root, file_contents)
     print_path_section("Created paths:", created)
     print_path_section("Skipped existing paths:", skipped)
     print_source_status(found_sources, skipped_sources)
-    missing_index_links = collect_missing_index_links(git_root)
     if missing_index_links:
         print_text_section("Missing recommended index links:", missing_index_links)
     print("Next: review .llm-wiki/index.md")
