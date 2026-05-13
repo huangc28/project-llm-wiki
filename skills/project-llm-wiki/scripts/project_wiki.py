@@ -984,6 +984,31 @@ def render_query_packet(packet: dict[str, object], as_json: bool) -> None:
             print(f"- {item}")
 
 
+def append_wiki_log_entry(
+    git_root: pathlib.Path,
+    entry_type: str,
+    title: str,
+    pages: list[str],
+    insight: str,
+) -> None:
+    log_path = git_root / WIKI_ROOT / "log.md"
+    page_label = "Pages consulted:" if entry_type == "query" else "Pages touched:"
+    page_list = ", ".join(format_wikilink_page(page) for page in pages) if pages else "(none)"
+    entry_title = trim_summary_text(title, LOG_TITLE_MAX_CHARS)
+    entry_insight = trim_summary_text(insight, LOG_INSIGHT_MAX_CHARS)
+    entry = "\n".join(
+        [
+            "",
+            f"## [{datetime.date.today().isoformat()}] {entry_type} | {entry_title}",
+            f"- {page_label} {page_list}",
+            f"- Key insight: {entry_insight}",
+            "",
+        ]
+    )
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(entry)
+
+
 def run_query(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -996,6 +1021,23 @@ def run_query(args) -> int:
     except ValueError as error:
         print(str(error))
         return 2
+
+    if args.key_insight or args.not_covered:
+        source_suggestion = args.suggest_source or "ingest curated source notes"
+        if args.not_covered:
+            title = f"not-covered: {args.question}"
+            insight = (
+                ".llm-wiki/ does not currently cover this topic; "
+                f"next ingest source type: {source_suggestion}."
+            )
+        else:
+            title = args.question
+            insight = args.key_insight
+        try:
+            append_wiki_log_entry(git_root, "query", title, args.consulted, insight)
+        except ValueError as error:
+            print(str(error))
+            return 2
 
     render_query_packet(packet, args.json)
     return 0
