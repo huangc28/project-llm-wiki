@@ -41,6 +41,14 @@ class ProjectWikiQueryTests(unittest.TestCase):
             check=False,
         )
 
+    def symlink_or_skip(
+        self, link_path: Path, target_path: Path, *, target_is_directory: bool = False
+    ):
+        try:
+            link_path.symlink_to(target_path, target_is_directory=target_is_directory)
+        except (NotImplementedError, OSError) as error:
+            self.skipTest(f"symlink unavailable: {error}")
+
     def init_wiki(self, repo: Path):
         self.init_repo(repo)
         result = self.run_helper(repo, "init")
@@ -257,6 +265,31 @@ class ProjectWikiQueryTests(unittest.TestCase):
             self.assertIn("Unsafe wiki content was not stored.", output)
             self.assertIn("query title contains secret-looking material", output)
             self.assertEqual(before, after)
+
+    def test_query_rejects_symlinked_log_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            log_path = repo / ".llm-wiki" / "log.md"
+            outside_log = repo / "outside-log.md"
+            outside_log.write_text("outside\n", encoding="utf-8")
+            log_path.unlink()
+            self.symlink_or_skip(log_path, outside_log)
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What ideas are tracked?",
+                "--consulted",
+                "features/ideas",
+                "--key-insight",
+                "Safe insight.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("write target must stay inside .llm-wiki", output)
+            self.assertEqual("outside\n", outside_log.read_text(encoding="utf-8"))
 
     def test_seeded_query_fixture_supports_cited_answer_workflow(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -40,6 +40,14 @@ class ProjectWikiIngestTests(unittest.TestCase):
             check=False,
         )
 
+    def symlink_or_skip(
+        self, link_path: Path, target_path: Path, *, target_is_directory: bool = False
+    ):
+        try:
+            link_path.symlink_to(target_path, target_is_directory=target_is_directory)
+        except (NotImplementedError, OSError) as error:
+            self.skipTest(f"symlink unavailable: {error}")
+
     def init_wiki(self, repo: Path):
         self.init_repo(repo)
         result = self.run_helper(repo, "init")
@@ -394,6 +402,70 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertEqual(ideas_before, ideas_after)
             self.assertEqual(log_before, log_after)
 
+    def test_ingest_rejects_symlinked_log_before_page_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas_path = repo / ".llm-wiki" / "features" / "ideas.md"
+            log_path = repo / ".llm-wiki" / "log.md"
+            outside_log = repo / "outside-log.md"
+            outside_log.write_text("outside\n", encoding="utf-8")
+            ideas_before = ideas_path.read_text(encoding="utf-8")
+            log_path.unlink()
+            self.symlink_or_skip(log_path, outside_log)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Symlink Log Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Log symlinks must not receive writes.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("write target must stay inside .llm-wiki", output)
+            self.assertEqual(ideas_before, ideas_path.read_text(encoding="utf-8"))
+            self.assertEqual("outside\n", outside_log.read_text(encoding="utf-8"))
+
+    def test_ingest_rejects_symlinked_index_before_new_page_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            index_path = repo / ".llm-wiki" / "index.md"
+            outside_index = repo / "outside-index.md"
+            outside_index.write_text("outside\n", encoding="utf-8")
+            index_path.unlink()
+            self.symlink_or_skip(index_path, outside_index)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Symlink Index Source",
+                "--new-page",
+                "features/symlink-index",
+                "--new-page-reason",
+                "no existing page covers this concept",
+                "--key-idea",
+                "Index symlinks must not receive writes.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("write target must stay inside .llm-wiki", output)
+            self.assertFalse(
+                (repo / ".llm-wiki" / "features" / "symlink-index.md").exists()
+            )
+            self.assertEqual("outside\n", outside_index.read_text(encoding="utf-8"))
+
     def test_ingest_rejects_more_than_fifteen_touched_pages(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -567,6 +639,40 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertTrue(second.is_file())
             self.assertIn("First curated note.", first.read_text(encoding="utf-8"))
             self.assertIn("Second curated note.", second.read_text(encoding="utf-8"))
+
+    def test_ingest_rejects_symlinked_raw_curated_before_page_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas_path = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas_before = ideas_path.read_text(encoding="utf-8")
+            raw_curated = repo / ".llm-wiki" / "raw" / "curated"
+            for child in raw_curated.iterdir():
+                child.unlink()
+            raw_curated.rmdir()
+            outside_raw = repo / "outside-raw"
+            outside_raw.mkdir()
+            self.symlink_or_skip(raw_curated, outside_raw, target_is_directory=True)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Symlink Raw Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Raw symlinks must not receive writes.",
+                "--preserve-raw",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("write target must stay inside .llm-wiki", output)
+            self.assertEqual(ideas_before, ideas_path.read_text(encoding="utf-8"))
+            self.assertEqual([], list(outside_raw.iterdir()))
 
     def test_ingest_prefers_existing_pages_over_new_pages(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -247,6 +247,53 @@ def path_is_under(path: pathlib.Path, root: pathlib.Path) -> bool:
     return True
 
 
+def path_has_symlink_component(root: pathlib.Path, relative_path: pathlib.Path) -> bool:
+    current = root
+    for part in relative_path.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def wiki_write_file(
+    git_root: pathlib.Path, relative_path: pathlib.Path
+) -> tuple[pathlib.Path | None, str | None]:
+    wiki_root = git_root / WIKI_ROOT
+    path = wiki_root / relative_path
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        return None, f"{WIKI_ROOT / relative_path}: write target must stay inside .llm-wiki."
+    if path_has_symlink_component(wiki_root, relative_path) or not path_is_under(
+        path, wiki_root
+    ):
+        return (
+            None,
+            f"{WIKI_ROOT / relative_path}: write target must stay inside .llm-wiki and must not be a symlink.",
+        )
+    if path.exists() and not path.is_file():
+        return None, f"{WIKI_ROOT / relative_path}: expected file."
+    return path, None
+
+
+def wiki_write_directory(
+    git_root: pathlib.Path, relative_path: pathlib.Path
+) -> tuple[pathlib.Path | None, str | None]:
+    wiki_root = git_root / WIKI_ROOT
+    path = wiki_root / relative_path
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        return None, f"{WIKI_ROOT / relative_path}: write target must stay inside .llm-wiki."
+    if path_has_symlink_component(wiki_root, relative_path) or not path_is_under(
+        path, wiki_root
+    ):
+        return (
+            None,
+            f"{WIKI_ROOT / relative_path}: write target must stay inside .llm-wiki and must not be a symlink.",
+        )
+    if path.exists() and not path.is_dir():
+        return None, f"{WIKI_ROOT / relative_path}: expected directory."
+    return path, None
+
+
 def repo_relative_path(path: pathlib.Path | str, git_root: pathlib.Path) -> str:
     if isinstance(path, pathlib.Path):
         try:
@@ -1004,7 +1051,10 @@ def append_wiki_log_entry(
     pages: list[str],
     insight: str,
 ) -> None:
-    log_path = git_root / WIKI_ROOT / "log.md"
+    log_path, log_error = wiki_write_file(git_root, pathlib.Path("log.md"))
+    if log_error is not None:
+        raise ValueError(log_error)
+    assert log_path is not None
     page_label = "Pages consulted:" if entry_type == "query" else "Pages touched:"
     page_list = ", ".join(format_wikilink_page(page) for page in pages) if pages else "(none)"
     entry_title = trim_summary_text(title, LOG_TITLE_MAX_CHARS)
@@ -1199,19 +1249,47 @@ def append_page_update(path: pathlib.Path, content: str, provenance: str) -> Non
         handle.write(entry)
 
 
-def update_index_for_new_page(git_root: pathlib.Path, page: str, title: str) -> None:
-    index_path = git_root / WIKI_ROOT / "index.md"
+def update_index_for_new_page(
+    git_root: pathlib.Path, page: str, title: str
+) -> str | None:
+    index_path, index_error = wiki_write_file(git_root, pathlib.Path("index.md"))
+    if index_error is not None:
+        return index_error
+    assert index_path is not None
     wikilink = format_wikilink_page(page)
     index_text = index_path.read_text(encoding="utf-8")
     if wikilink in index_text:
-        return
+        return None
     with index_path.open("a", encoding="utf-8") as handle:
         handle.write(f"\n- {wikilink} - {title}\n")
+    return None
 
 
 def slugify_title(title: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     return slug or "curated-source"
+
+
+def next_curated_raw_path(
+    git_root: pathlib.Path, title: str
+) -> tuple[pathlib.Path | None, str | None]:
+    raw_root, raw_root_error = wiki_write_directory(
+        git_root, pathlib.Path("raw") / "curated"
+    )
+    if raw_root_error is not None:
+        return None, raw_root_error
+    raw_slug = slugify_title(title)
+    suffix = 1
+    while True:
+        raw_filename = f"{raw_slug}.md" if suffix == 1 else f"{raw_slug}-{suffix}.md"
+        raw_relative_path = pathlib.Path("raw") / "curated" / raw_filename
+        raw_path, raw_file_error = wiki_write_file(git_root, raw_relative_path)
+        if raw_file_error is not None:
+            return None, raw_file_error
+        assert raw_path is not None
+        if not raw_path.exists():
+            return raw_path, None
+        suffix += 1
 
 
 def preserve_curated_raw_source(
@@ -1221,14 +1299,17 @@ def preserve_curated_raw_source(
     if unsafe_error is not None:
         return None, unsafe_error
 
-    raw_root = git_root / WIKI_ROOT / "raw" / "curated"
+    raw_root, raw_root_error = wiki_write_directory(
+        git_root, pathlib.Path("raw") / "curated"
+    )
+    if raw_root_error is not None:
+        return None, raw_root_error
+    assert raw_root is not None
     raw_root.mkdir(parents=True, exist_ok=True)
-    raw_slug = slugify_title(title)
-    raw_path = raw_root / f"{raw_slug}.md"
-    suffix = 2
-    while raw_path.exists():
-        raw_path = raw_root / f"{raw_slug}-{suffix}.md"
-        suffix += 1
+    raw_path, raw_path_error = next_curated_raw_path(git_root, title)
+    if raw_path_error is not None:
+        return None, raw_path_error
+    assert raw_path is not None
     raw_note = "\n".join(
         [
             f"# {title}",
@@ -1309,6 +1390,32 @@ def run_ingest(args) -> int:
         if wiki_relative.startswith("summaries/") and not args.summary_page:
             print("Summary pages require --summary-page.")
             return 2
+        new_relative = pathlib.Path(wiki_relative)
+        _new_write_path, new_write_error = wiki_write_file(git_root, new_relative)
+        if new_write_error is not None:
+            print(new_write_error)
+            return 2
+        _new_parent_path, new_parent_error = wiki_write_directory(
+            git_root, new_relative.parent
+        )
+        if new_parent_error is not None:
+            print(new_parent_error)
+            return 2
+
+    _log_path, log_error = wiki_write_file(git_root, pathlib.Path("log.md"))
+    if log_error is not None:
+        print(log_error)
+        return 2
+    if args.new_page:
+        _index_path, index_error = wiki_write_file(git_root, pathlib.Path("index.md"))
+        if index_error is not None:
+            print(index_error)
+            return 2
+    if args.preserve_raw and source_record["text"]:
+        _raw_path, raw_path_error = next_curated_raw_path(git_root, args.title)
+        if raw_path_error is not None:
+            print(raw_path_error)
+            return 2
 
     target_paths: list[tuple[str, pathlib.Path]] = []
     for page in args.target_page:
@@ -1347,7 +1454,10 @@ def run_ingest(args) -> int:
                 ),
                 encoding="utf-8",
             )
-            update_index_for_new_page(git_root, args.new_page, new_title)
+            index_error = update_index_for_new_page(git_root, args.new_page, new_title)
+            if index_error is not None:
+                print(index_error)
+                return 2
         touched_pages.append(format_wikilink_page(args.new_page))
 
     raw_preservation = "skipped"
@@ -1365,13 +1475,17 @@ def run_ingest(args) -> int:
         raw_preservation = raw_path
 
     if touched_pages:
-        append_wiki_log_entry(
-            git_root,
-            "ingest",
-            args.title,
-            touched_pages,
-            args.key_idea,
-        )
+        try:
+            append_wiki_log_entry(
+                git_root,
+                "ingest",
+                args.title,
+                touched_pages,
+                args.key_idea,
+            )
+        except ValueError as error:
+            print(str(error))
+            return 2
 
     result: dict[str, object] = {
         "kind": source_record["kind"],
