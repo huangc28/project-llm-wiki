@@ -61,7 +61,12 @@ KEY_VALUE_SECRET_PATTERN = re.compile(
     rf"(?i)\b{SECRET_KEY_NAME_PATTERN}\b\s*[:=]\s*['\"]?([^'\"\s#]+)"
 )
 KNOWN_TOKEN_PATTERN = re.compile(
-    r"\b(?:sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b"
+    r"\b(?:"
+    r"sk-[A-Za-z0-9_-]{20,}|"
+    r"github_pat_[A-Za-z0-9_]{20,}|"
+    r"gh[pousr]_[A-Za-z0-9_]{20,}|"
+    r"AKIA[0-9A-Z]{16}"
+    r")\b"
 )
 UPDATED_FRONTMATTER_PATTERN = re.compile(r"updated:\s*(\d{4}-\d{2}-\d{2})\s*")
 LINE_REFERENCE_PATTERN = re.compile(
@@ -577,11 +582,16 @@ def check_stale_pages(
     return findings
 
 
+def is_markdown_fence(line: str) -> bool:
+    stripped = line.lstrip()
+    return stripped.startswith("```") or stripped.startswith("~~~")
+
+
 def extract_markdown_code_references(markdown_text: str) -> list[str]:
     references: list[str] = []
     in_fence = False
     for line in markdown_text.splitlines():
-        if line.lstrip().startswith("```"):
+        if is_markdown_fence(line):
             in_fence = not in_fence
             continue
         if in_fence:

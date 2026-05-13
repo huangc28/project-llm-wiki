@@ -532,6 +532,23 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: secret_like_content", output)
             self.assertIn(".llm-wiki/raw/curated/secrets.env", output)
 
+    def test_lint_reports_bare_github_fine_grained_pat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "unsafe.log"
+            unsafe.write_text(
+                "Leaked token: github_pat_1234567890abcdefghijklmnopqrstuvwxyz\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/unsafe.log", output)
+
     def test_lint_allows_placeholder_multi_component_secret_examples(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -767,6 +784,24 @@ class ProjectWikiLintTests(unittest.TestCase):
             ideas.write_text(
                 ideas.read_text(encoding="utf-8")
                 + "\n```text\nsrc/missing.py\n```\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: missing_repo_path", output)
+            self.assertIn("src/missing.py", output)
+
+    def test_lint_reports_missing_repo_path_from_tilde_fenced_code_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas = repo / ".llm-wiki" / "features" / "ideas.md"
+            ideas.write_text(
+                ideas.read_text(encoding="utf-8")
+                + "\n~~~text\nsrc/missing.py\n~~~\n",
                 encoding="utf-8",
             )
 
