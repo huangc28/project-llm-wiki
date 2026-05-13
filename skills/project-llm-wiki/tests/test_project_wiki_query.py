@@ -210,6 +210,54 @@ class ProjectWikiQueryTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertIn("Pages consulted: [[features/ideas]]", log_text)
 
+    def test_query_log_rejects_secret_like_key_insight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            log_path = repo / ".llm-wiki" / "log.md"
+            before = log_path.read_text(encoding="utf-8")
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What ideas are tracked?",
+                "--consulted",
+                "features/ideas",
+                "--key-insight",
+                "DATABASE_PASSWORD=super-secret-value",
+            )
+            output = result.stdout + result.stderr
+            after = log_path.read_text(encoding="utf-8")
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe wiki content was not stored.", output)
+            self.assertIn("key insight contains secret-looking material", output)
+            self.assertEqual(before, after)
+
+    def test_query_log_rejects_secret_like_title(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            log_path = repo / ".llm-wiki" / "log.md"
+            before = log_path.read_text(encoding="utf-8")
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "DATABASE_PASSWORD=super-secret-value",
+                "--consulted",
+                "features/ideas",
+                "--key-insight",
+                "Safe insight.",
+            )
+            output = result.stdout + result.stderr
+            after = log_path.read_text(encoding="utf-8")
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe wiki content was not stored.", output)
+            self.assertIn("query title contains secret-looking material", output)
+            self.assertEqual(before, after)
+
     def test_seeded_query_fixture_supports_cited_answer_workflow(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

@@ -168,6 +168,85 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertIn("Unsafe raw material was not stored.", output)
             self.assertIn("secret-looking", output)
 
+    def test_ingest_rejects_secret_like_key_idea_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            ideas_path = repo / ".llm-wiki" / "features" / "ideas.md"
+            log_path = repo / ".llm-wiki" / "log.md"
+            ideas_before = ideas_path.read_text(encoding="utf-8")
+            log_before = log_path.read_text(encoding="utf-8")
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note about safe wiki behavior.",
+                "--title",
+                "Safe Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "DATABASE_PASSWORD=super-secret-value",
+            )
+            output = result.stdout + result.stderr
+            ideas_after = ideas_path.read_text(encoding="utf-8")
+            log_after = log_path.read_text(encoding="utf-8")
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe wiki content was not stored.", output)
+            self.assertIn("key idea contains secret-looking material", output)
+            self.assertEqual(ideas_before, ideas_after)
+            self.assertEqual(log_before, log_after)
+
+    def test_ingest_rejects_disallowed_title_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note about safe wiki behavior.",
+                "--title",
+                "Full transcript source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Safe durable idea.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe wiki content was not stored.", output)
+            self.assertIn("title appears to contain transcripts", output)
+
+    def test_ingest_rejects_credential_bearing_url_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--url",
+                "https://user:super-secret@example.com/source",
+                "--text",
+                "Curated summary from a URL.",
+                "--title",
+                "Credential URL Source",
+                "--target-page",
+                "features/ideas",
+                "--key-idea",
+                "Credential-bearing URLs must not be stored.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Unsafe wiki content was not stored.", output)
+            self.assertIn("source provenance contains secret-looking material", output)
+
     def test_ingest_rejects_large_unreviewed_raw_material(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -261,6 +340,27 @@ class ProjectWikiIngestTests(unittest.TestCase):
 
             self.assertEqual(2, result.returncode, output)
             self.assertIn("New page creation requires --new-page-reason.", output)
+
+    def test_ingest_requires_at_least_one_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "No Destination Source",
+                "--key-idea",
+                "This should not silently disappear.",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("Provide at least one --target-page or --new-page.", output)
+            self.assertNotIn("Ingest source accepted.", output)
 
     def test_ingest_rejects_more_than_fifteen_touched_pages(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -407,6 +507,35 @@ class ProjectWikiIngestTests(unittest.TestCase):
             self.assertIn("Provenance: inline text", raw_text)
             self.assertIn("Short curated source note.", raw_text)
 
+    def test_ingest_preserved_raw_copy_does_not_overwrite_same_title(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            for source_text in ("First curated note.", "Second curated note."):
+                result = self.run_helper(
+                    repo,
+                    "ingest",
+                    "--text",
+                    source_text,
+                    "--title",
+                    "Duplicate Raw Source",
+                    "--target-page",
+                    "features/ideas",
+                    "--key-idea",
+                    "Raw copies with duplicate titles remain distinct.",
+                    "--preserve-raw",
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+            first = repo / ".llm-wiki" / "raw" / "curated" / "duplicate-raw-source.md"
+            second = repo / ".llm-wiki" / "raw" / "curated" / "duplicate-raw-source-2.md"
+
+            self.assertTrue(first.is_file())
+            self.assertTrue(second.is_file())
+            self.assertIn("First curated note.", first.read_text(encoding="utf-8"))
+            self.assertIn("Second curated note.", second.read_text(encoding="utf-8"))
+
     def test_ingest_prefers_existing_pages_over_new_pages(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -451,6 +580,20 @@ class ProjectWikiIngestTests(unittest.TestCase):
                 "--key-idea",
                 "Summary pages need the summary flag.",
             )
+            wikilink_missing_flag = self.run_helper(
+                repo,
+                "ingest",
+                "--text",
+                "Curated source note.",
+                "--title",
+                "Summary Source",
+                "--new-page",
+                "[[summaries/wikilink-source-note]]",
+                "--new-page-reason",
+                "cross-cutting source",
+                "--key-idea",
+                "Wikilink summary pages still need the summary flag.",
+            )
             summary_result = self.run_helper(
                 repo,
                 "ingest",
@@ -483,6 +626,14 @@ class ProjectWikiIngestTests(unittest.TestCase):
 
             self.assertEqual(2, missing_flag.returncode, missing_flag.stdout)
             self.assertIn("Summary pages require --summary-page.", missing_flag.stdout)
+            self.assertEqual(2, wikilink_missing_flag.returncode, wikilink_missing_flag.stdout)
+            self.assertIn(
+                "Summary pages require --summary-page.",
+                wikilink_missing_flag.stdout,
+            )
+            self.assertFalse(
+                (repo / ".llm-wiki" / "summaries" / "wikilink-source-note.md").exists()
+            )
             self.assertEqual(0, summary_result.returncode, summary_result.stdout)
             self.assertTrue(
                 (repo / ".llm-wiki" / "summaries" / "source-note.md").is_file()

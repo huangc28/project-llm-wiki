@@ -41,6 +41,11 @@ class ProjectWikiPackageTests(unittest.TestCase):
 
         self.assertEqual(0, result.returncode)
         self.assertIn("Repo-local .llm-wiki helper for Project LLM Wiki", result.stdout)
+        self.assertIn(
+            "query prepares index-first support packets; ingest updates curated wiki pages.",
+            result.stdout,
+        )
+        self.assertNotIn("query and ingest remain planned for later phases", result.stdout)
 
     def test_lint_help_documents_json_flag(self):
         result = self.run_helper("lint", "--help")

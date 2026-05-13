@@ -1046,6 +1046,19 @@ def run_query(args) -> int:
         else:
             title = args.question
             insight = args.key_insight
+        for label, value in (
+            ("query title", title),
+            ("key insight", insight),
+            ("source suggestion", source_suggestion),
+            *[
+                (f"consulted page {index}", page)
+                for index, page in enumerate(args.consulted, 1)
+            ],
+        ):
+            unsafe_error = validate_persisted_wiki_text(label, value)
+            if unsafe_error is not None:
+                print(unsafe_error)
+                return 2
         try:
             append_wiki_log_entry(git_root, "query", title, args.consulted, insight)
         except ValueError as error:
@@ -1066,14 +1079,30 @@ def has_disallowed_raw_policy_content(text: str) -> bool:
     return any(phrase in normalized_text for phrase in DISALLOWED_RAW_PHRASES)
 
 
-def validate_curated_source_text(text: str) -> str | None:
+def unsafe_wiki_text_reason(text: str) -> str | None:
     encoded_size = len(text.encode("utf-8"))
     if encoded_size > RAW_SIZE_WARNING_BYTES:
-        return "Unsafe raw material was not stored. Curated source text is larger than the raw size policy allows."
+        return "is larger than the raw size policy allows."
     if has_secret_like_content(text):
-        return "Unsafe raw material was not stored. Curated source text contains secret-looking material."
+        return "contains secret-looking material."
     if has_disallowed_raw_policy_content(text):
-        return "Unsafe raw material was not stored. Curated source text appears to contain transcripts, logs, dumps, private data, or active task state."
+        return "appears to contain transcripts, logs, dumps, private data, or active task state."
+    return None
+
+
+def validate_curated_source_text(text: str) -> str | None:
+    reason = unsafe_wiki_text_reason(text)
+    if reason is not None:
+        return f"Unsafe raw material was not stored. Curated source text {reason}"
+    return None
+
+
+def validate_persisted_wiki_text(label: str, value: str) -> str | None:
+    if not value:
+        return None
+    reason = unsafe_wiki_text_reason(value)
+    if reason is not None:
+        return f"Unsafe wiki content was not stored. {label} {reason}"
     return None
 
 
@@ -1194,7 +1223,12 @@ def preserve_curated_raw_source(
 
     raw_root = git_root / WIKI_ROOT / "raw" / "curated"
     raw_root.mkdir(parents=True, exist_ok=True)
-    raw_path = raw_root / f"{slugify_title(title)}.md"
+    raw_slug = slugify_title(title)
+    raw_path = raw_root / f"{raw_slug}.md"
+    suffix = 2
+    while raw_path.exists():
+        raw_path = raw_root / f"{raw_slug}-{suffix}.md"
+        suffix += 1
     raw_note = "\n".join(
         [
             f"# {title}",
@@ -1235,19 +1269,46 @@ def run_ingest(args) -> int:
         return 2
     assert source_record is not None
 
+    for label, value in (
+        ("title", args.title),
+        ("key idea", args.key_idea),
+        ("source provenance", source_record["provenance"]),
+        ("new page title", args.new_page_title or ""),
+        *[
+            (f"target page {index}", page)
+            for index, page in enumerate(args.target_page, 1)
+        ],
+        ("new page", args.new_page),
+    ):
+        unsafe_error = validate_persisted_wiki_text(label, value)
+        if unsafe_error is not None:
+            print(unsafe_error)
+            return 2
+
     touched_page_names = list(args.target_page)
     if args.new_page:
         touched_page_names.append(args.new_page)
+    if not touched_page_names:
+        print("Provide at least one --target-page or --new-page.")
+        return 2
     if len(touched_page_names) > 15:
         print("Ingest touches more than the 15 page hard cap.")
         return 2
 
+    new_path: pathlib.Path | None = None
     if args.new_page and not args.new_page_reason:
         print("New page creation requires --new-page-reason.")
         return 2
-    if args.new_page.startswith("summaries/") and not args.summary_page:
-        print("Summary pages require --summary-page.")
-        return 2
+    if args.new_page:
+        new_path, new_error = wiki_page_path(git_root, args.new_page)
+        if new_error is not None:
+            print(new_error)
+            return 2
+        assert new_path is not None
+        wiki_relative = new_path.relative_to(wiki_root).as_posix()
+        if wiki_relative.startswith("summaries/") and not args.summary_page:
+            print("Summary pages require --summary-page.")
+            return 2
 
     touched_pages: list[str] = []
     for page in args.target_page:
@@ -1263,10 +1324,6 @@ def run_ingest(args) -> int:
         touched_pages.append(format_wikilink_page(page))
 
     if args.new_page:
-        new_path, new_error = wiki_page_path(git_root, args.new_page)
-        if new_error is not None:
-            print(new_error)
-            return 2
         assert new_path is not None
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_title = args.new_page_title or args.title
@@ -1396,7 +1453,7 @@ def build_parser():
             """\
             project-wiki init creates a .llm-wiki skeleton in the current Git root.
             Use project-wiki init --dry-run to preview changes without writing files.
-            query and ingest remain planned for later phases.
+            query prepares index-first support packets; ingest updates curated wiki pages.
             """
         ),
     )
