@@ -357,17 +357,17 @@ Continue testing lint through the helper subprocess boundary, because existing t
 |---|-------|---------|---------------|
 | A1 | Time-zone-sensitive stale tests may fail around thresholds. [ASSUMED] | Common Pitfalls | Low; choose dates far from the 90-day boundary or compute current dates in fixtures. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should unreadable Markdown files be lint `error` findings or operational exit `2`?**
+1. **RESOLVED: Should unreadable Markdown files be lint `error` findings or operational exit `2`?**
    - What we know: init treats an unreadable existing `index.md` as a conflict and exits `2`. [VERIFIED: skills/project-llm-wiki/scripts/project_wiki.py:192-201,320-323]
    - What's unclear: Phase 3 context does not explicitly classify unreadable wiki files. [VERIFIED: .planning/phases/03-lint-and-safety-checks/03-CONTEXT.md:16-48]
-   - Recommendation: Treat missing `.llm-wiki/` or no Git repo as operational exit `2`; treat unreadable Markdown files inside an existing wiki as `error` findings so JSON/text output still includes path and remediation. [VERIFIED: .planning/phases/03-lint-and-safety-checks/03-CONTEXT.md:46-48]
+   - RESOLVED: Missing Git repo or missing `.llm-wiki/` remains an operational exit `2`; unreadable wiki files inside an existing wiki produce lint `error` findings with path and remediation so text and JSON output can report them. [VERIFIED: .planning/phases/03-lint-and-safety-checks/03-CONTEXT.md:46-48]
 
-2. **Should provider-specific token prefixes be included in Phase 3?**
+2. **RESOLVED: Should provider-specific token prefixes be included in Phase 3?**
    - What we know: GitHub documents many supported secret scanning patterns and high-precision generic private key/database URL patterns. [CITED: https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns]
    - What's unclear: Phase 3 context delegates exact high-confidence secret patterns to the planner. [VERIFIED: .planning/phases/03-lint-and-safety-checks/03-CONTEXT.md:50-51]
-   - Recommendation: Start with generic high-confidence private key and credential URL patterns plus one fixture that cannot be confused with policy prose; add provider prefixes only if tests cover false positives. [VERIFIED: skills/project-llm-wiki/assets/templates/llm-wiki/raw/README.md:11-20]
+   - RESOLVED: Phase 3 starts with generic high-confidence private key delimiters and credential-bearing URLs only; provider-specific token prefixes are deferred unless later tests add false-positive coverage. [VERIFIED: skills/project-llm-wiki/assets/templates/llm-wiki/raw/README.md:11-20]
 
 ## Environment Availability
 
