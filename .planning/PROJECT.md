@@ -16,12 +16,12 @@ Future agents and contributors can recover durable project context from the repo
 
 - [x] Reusable project wiki skill package with documented project-wiki operations, split references, tests, and a no-dependency helper foundation. Validated in Phase 1.
 - [x] Safe git-root `.llm-wiki/` initialization that creates a git-visible skeleton, preserves existing notes on rerun, seeds README/AGENTS source status, and includes raw source policy templates. Validated in Phase 2.
+- [x] Deterministic `project-wiki lint` behavior for broken wikilinks, missing index entries, stale pages, secret-looking content, oversized raw files, and likely repo/wiki contradictions. Validated in Phase 3.
 
 ### Active
 
 - [ ] Provide query behavior that reads `.llm-wiki/index.md` first, cites wiki pages with wikilinks, and appends to `.llm-wiki/log.md`.
 - [ ] Provide ingest behavior that updates existing wiki pages before creating new pages and stores only curated, de-secreted raw sources.
-- [ ] Provide lint behavior for broken wikilinks, missing index entries, stale pages, secret-looking content, oversized raw files, and likely repo/wiki contradictions.
 - [ ] Patch repo `AGENTS.md` merge-safely with Project LLM Wiki rules when requested, without clobbering existing NotebookLM or workflow sections.
 - [ ] Validate the workflow first against a clean test repo and then against `peasydeal_be`.
 
@@ -58,9 +58,9 @@ The first skill set should likely include:
 
 ## Current State
 
-Phase 2 is complete as of 2026-05-13. The package now exposes a real `project-wiki init` command that resolves the current Git root, refuses unsafe non-git, parent-workspace, symlink, conflict, and invalid-index paths before writes, creates the `.llm-wiki/` skeleton from package templates, and passes the Phase 2 unittest suite.
+Phase 3 is complete as of 2026-05-13. The package now exposes `project-wiki init` and `project-wiki lint`; lint resolves the current Git root, scans readable `.llm-wiki/` files without mutating them, reports structural errors plus safety/freshness/drift warnings, supports deterministic text and JSON output, and passes the Phase 3 unittest suite.
 
-Next phase: implement `project-wiki lint` for structural wiki checks, safety warnings, freshness signals, and repo/wiki drift reporting.
+Next phase: implement the query and ingest loop so repo-local answers cite wiki pages and curated sources compound into existing `.llm-wiki/` pages first.
 
 ## Constraints
 
@@ -79,6 +79,7 @@ Next phase: implement `project-wiki lint` for structural wiki checks, safety war
 | Use `.llm-wiki/` as the repo wiki path | Clear, explicit, and separate from `.planning/` and docs intended for humans outside the agent workflow | Validated in Phase 2 |
 | Keep `.llm-wiki/` git-tracked by default | Durable project knowledge should travel with the repo and be reviewable in diffs | Validated in Phase 2 |
 | Keep active task state out of `.llm-wiki/` | Task state changes quickly and belongs in GSD, Linear, OMX, or workflow files | Validated in Phase 2 |
+| Keep lint warning-only for safety, freshness, and drift signals | Agents should see unsafe or stale wiki content before rollout without blocking commits on heuristic warnings | Validated in Phase 3 |
 | Start with one real repo after a clean test repo | Limits rollout risk before applying the pattern across the PeasyDeal workspace | Pending |
 | Treat repo code as source of truth over wiki notes | Prevents stale compiled knowledge from becoming authoritative | Pending |
 | Keep Obsidian and NotebookLM as adjacent layers | Obsidian handles cross-project synthesis; NotebookLM can support retrieval, but neither replaces repo-local truth | Pending |
@@ -101,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-13 after Phase 2 completion*
+*Last updated: 2026-05-13 after Phase 3 completion*
