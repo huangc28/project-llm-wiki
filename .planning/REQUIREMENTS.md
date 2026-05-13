@@ -37,11 +37,11 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Ingest
 
-- [ ] **INGEST-01**: User can ingest a curated project source into `.llm-wiki/` without storing unsafe raw material.
-- [ ] **INGEST-02**: Ingest updates existing wiki pages before creating new pages.
-- [ ] **INGEST-03**: Ingest creates a summary page only when a source affects multiple wiki areas or cross-cutting project knowledge.
-- [ ] **INGEST-04**: Ingest adds provenance to touched pages and updates `.llm-wiki/index.md` and `.llm-wiki/log.md`.
-- [ ] **INGEST-05**: Ingest keeps active task state, execution checkpoints, and unvalidated work out of `.llm-wiki/`.
+- [x] **INGEST-01**: User can ingest a curated project source into `.llm-wiki/` without storing unsafe raw material.
+- [x] **INGEST-02**: Ingest updates existing wiki pages before creating new pages.
+- [x] **INGEST-03**: Ingest creates a summary page only when a source affects multiple wiki areas or cross-cutting project knowledge.
+- [x] **INGEST-04**: Ingest adds provenance to touched pages and updates `.llm-wiki/index.md` and `.llm-wiki/log.md`.
+- [x] **INGEST-05**: Ingest keeps active task state, execution checkpoints, and unvalidated work out of `.llm-wiki/`.
 
 ### Lint
 
@@ -122,11 +122,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUERY-02 | Phase 4 | Complete |
 | QUERY-03 | Phase 4 | Complete |
 | QUERY-04 | Phase 4 | Complete |
-| INGEST-01 | Phase 4 | Pending |
-| INGEST-02 | Phase 4 | Pending |
-| INGEST-03 | Phase 4 | Pending |
-| INGEST-04 | Phase 4 | Pending |
-| INGEST-05 | Phase 4 | Pending |
+| INGEST-01 | Phase 4 | Complete |
+| INGEST-02 | Phase 4 | Complete |
+| INGEST-03 | Phase 4 | Complete |
+| INGEST-04 | Phase 4 | Complete |
+| INGEST-05 | Phase 4 | Complete |
 | LINT-01 | Phase 3 | Complete |
 | LINT-02 | Phase 3 | Complete |
 | LINT-03 | Phase 3 | Complete |

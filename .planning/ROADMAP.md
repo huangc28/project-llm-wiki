@@ -89,7 +89,7 @@ Plans:
 
 Plans:
 - [x] 04-01: Implement query protocol and log append behavior
-- [ ] 04-02: Implement curated ingest protocol, provenance, index updates, and summary rules
+- [x] 04-02: Implement curated ingest protocol, provenance, index updates, and summary rules
 - [ ] 04-03: Add query/ingest fixtures and boundary tests
 
 ### Phase 5: Agent Instructions and Real Repo Validation
