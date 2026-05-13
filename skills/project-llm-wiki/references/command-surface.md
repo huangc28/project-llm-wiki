@@ -1,8 +1,8 @@
 # Command Surface
 
-## Phase 1 Contract
+## Current Contract
 
-Phase 1 documents mode names and boundaries. It does not implement full `.llm-wiki/` init, lint, query, ingest, promotion, or AGENTS patch behavior.
+The package documents mode names and boundaries for the reusable Project LLM Wiki skill. Implemented modes are safe to run through the helper script; deferred modes remain documented so future phases do not change command names accidentally.
 
 The reusable package exposes one `project-llm-wiki` skill with documented mode triggers. Later phases may add thin aliases if usage proves that separate skill entrypoints are better.
 
@@ -10,11 +10,39 @@ The reusable package exposes one `project-llm-wiki` skill with documented mode t
 
 ### project-wiki-init
 
-Planned mode for detecting the target repository's actual git root and creating an idempotent `.llm-wiki/` skeleton.
+Implemented mode for detecting the current repository's actual Git root and creating an idempotent `.llm-wiki/` skeleton.
 
 ### project-wiki-lint
 
-Planned mode for checking broken wikilinks, missing index entries, secret-looking content, oversized raw files, stale pages, and likely repo/wiki contradictions.
+Implemented read-only mode for checking broken wikilinks, missing index entries, secret-looking content, oversized raw files, stale pages, and conservative repo path drift.
+
+Run the human-readable report:
+
+`project-wiki lint`
+
+Run the parseable report for CI or agent tooling:
+
+`project-wiki lint --json`
+
+Broken Obsidian wikilinks are `error` findings and make lint exit `1`. Missing index entries, secret-looking content, oversized raw files, stale pages, and repo path drift are `warning` findings; warning-only runs exit `0`.
+
+Every finding contains the fixed fields `severity`, `code`, `path`, `message`, and `remediation`. Text output prints those labels for each finding. JSON output renders:
+
+```json
+{
+  "findings": [
+    {
+      "code": "broken_wikilink",
+      "message": "Human-readable problem statement.",
+      "path": ".llm-wiki/features/ideas.md",
+      "remediation": "Actionable repair guidance.",
+      "severity": "error"
+    }
+  ]
+}
+```
+
+Clean runs print `No issues found in .llm-wiki/` for text output and `{"findings": []}` for JSON output.
 
 ### project-wiki-query
 
@@ -44,7 +72,6 @@ Potential future aliases:
 
 Full command behavior is deferred to later phases:
 
-- Init and wiki templates: Phase 2
-- Lint and safety checks: Phase 3
 - Query and ingest loop: Phase 4
+- Promotion of validated learnings into `.llm-wiki/`
 - AGENTS integration and real repo validation: Phase 5

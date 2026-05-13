@@ -1,10 +1,14 @@
 # Testing
 
-## Test Command
+## Test Commands
 
 Run package tests with:
 
 `python3 -m unittest discover -s skills/project-llm-wiki/tests`
+
+Run the targeted Phase 3 lint suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_lint.py`
 
 ## Phase 2 Validation Contract
 
@@ -31,6 +35,26 @@ After Plans 02-01 and 02-02 implement init behavior, the expected green command
 is:
 
 `python3 -m unittest discover -s skills/project-llm-wiki/tests`
+
+## Phase 3 Validation Contract
+
+Phase 3 tests verify lint behavior through clean temporary Git repositories that
+run `project-wiki init`, mutate `.llm-wiki/`, and then run `project-wiki lint`
+through the same subprocess boundary users will run.
+
+The validation suite covers:
+
+- broken wikilinks as error findings and exit code `1`.
+- missing index entries as warning findings and warning-only exit behavior.
+- secret-looking content in Markdown and non-Markdown raw files.
+- oversized raw files under `.llm-wiki/raw/`.
+- stale pages using top-of-file `updated:` frontmatter older than 90 days.
+- repo path drift from inline code spans and fenced code blocks only.
+- JSON output from `project-wiki lint --json`.
+- fixed finding fields: `severity`, `code`, `path`, `message`, and
+  `remediation`.
+- read-only assertions that compare wiki file bytes before and after warning and
+  error lint runs.
 
 ## No Dependency Rule
 
