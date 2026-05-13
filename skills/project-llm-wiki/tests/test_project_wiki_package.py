@@ -26,6 +26,23 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertIn("project-wiki-query", skill)
         self.assertIn("project-wiki-ingest", skill)
 
+    def test_mode_alias_skills_exist_for_codex_dollar_triggers(self):
+        aliases = (
+            ("project-wiki-init", "`project-wiki-init` mode"),
+            ("project-wiki-lint", "`project-wiki-lint` mode"),
+            ("project-wiki-query", "`project-wiki-query` mode"),
+            ("project-wiki-ingest", "`project-wiki-ingest` mode"),
+        )
+
+        for alias, mode_phrase in aliases:
+            with self.subTest(alias=alias):
+                skill_path = ROOT / "skills" / alias / "SKILL.md"
+                text = skill_path.read_text()
+
+                self.assertIn(f"name: {alias}", text)
+                self.assertIn("project-llm-wiki", text)
+                self.assertIn(mode_phrase, text)
+
     def test_package_contract_states_local_boundary(self):
         contract = (PACKAGE / "references" / "package-contract.md").read_text()
 
@@ -106,6 +123,10 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "Implemented mode for updating existing wiki pages",
             "project-wiki ingest --text TEXT --title TITLE --target-page PAGE --key-idea TEXT",
             "project-wiki ingest --url URL --text CURATED_TEXT --title TITLE --target-page PAGE --key-idea TEXT",
+            "$project-wiki-init",
+            "$project-wiki-lint",
+            "$project-wiki-query",
+            "$project-wiki-ingest",
             "watch-video",
         ):
             self.assertIn(expected, command_surface)

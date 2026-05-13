@@ -4,7 +4,7 @@
 
 The package documents mode names and boundaries for the reusable Project LLM Wiki skill. Implemented modes are safe to run through the helper script; deferred modes remain documented so future phases do not change command names accidentally.
 
-The reusable package exposes one `project-llm-wiki` skill with documented mode triggers. Later phases may add thin aliases if usage proves that separate skill entrypoints are better.
+The reusable package exposes one `project-llm-wiki` skill plus thin alias skills for the implemented mode triggers. The alias skills exist so Codex can show `$project-wiki-*` entries in skill autocomplete while keeping the detailed protocol in `project-llm-wiki`.
 
 ## Modes
 
@@ -98,17 +98,20 @@ Video sources require transcript, summary, or curated notes before core ingest. 
 
 Future mode for promoting validated GSD, PR, debug, or incident learnings into `.llm-wiki/` without copying volatile task state.
 
-## Planned Aliases
+## Alias Skills
 
-The primary package remains `project-llm-wiki` during Phase 1.
+Implemented thin aliases:
 
-Potential future aliases:
+- `$project-wiki-init`
+- `$project-wiki-lint`
+- `$project-wiki-query`
+- `$project-wiki-ingest`
 
-- `project-wiki-init`
-- `project-wiki-lint`
-- `project-wiki-query`
-- `project-wiki-ingest`
-- `project-wiki-promote`
+Each alias reads the main `project-llm-wiki` skill and follows its matching mode. Keep aliases thin; do not duplicate the full protocol in each wrapper.
+
+Potential future alias:
+
+- `$project-wiki-promote`
 
 ## Deferred Behavior
 
