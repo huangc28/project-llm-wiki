@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import json
 import pathlib
 import re
@@ -43,7 +44,13 @@ REQUIRED_FILES = tuple(
 )
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
 WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
+PRIVATE_KEY_PATTERN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
+CREDENTIAL_URL_PATTERN = re.compile(
+    r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]+:[^\s/@]+@[^\s/@]+"
+)
+UPDATED_FRONTMATTER_PATTERN = re.compile(r"updated:\s*(\d{4}-\d{2}-\d{2})\s*")
 RAW_SIZE_WARNING_BYTES = 100 * 1024
+STALE_AFTER_DAYS = 90
 INDEX_COVERAGE_DIRECTORIES = (
     "architecture",
     "domain",
@@ -422,6 +429,85 @@ def check_raw_file_sizes(git_root: pathlib.Path) -> list[dict[str, str]]:
     return findings
 
 
+def check_secret_like_content(
+    git_root: pathlib.Path, wiki_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    for wiki_file in wiki_files:
+        relative_path = repo_relative_path(wiki_file, git_root)
+        text, read_error = read_wiki_text(wiki_file, git_root)
+        if read_error is not None:
+            findings.append(read_error)
+            continue
+        assert text is not None
+        if not (
+            PRIVATE_KEY_PATTERN.search(text) or CREDENTIAL_URL_PATTERN.search(text)
+        ):
+            continue
+        findings.append(
+            make_finding(
+                "warning",
+                "secret_like_content",
+                relative_path,
+                "Wiki file contains high-confidence secret-looking material.",
+                "Remove or redact the unsafe material before committing the wiki.",
+            )
+        )
+    return findings
+
+
+def parse_updated_frontmatter(markdown_text: str) -> datetime.date | None:
+    lines = markdown_text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+
+    frontmatter_lines: list[str] = []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        frontmatter_lines.append(line)
+    else:
+        return None
+
+    for line in frontmatter_lines:
+        match = UPDATED_FRONTMATTER_PATTERN.fullmatch(line.strip())
+        if match is None:
+            continue
+        try:
+            return datetime.date.fromisoformat(match.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def check_stale_pages(
+    git_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    today = datetime.date.today()
+    for markdown_file in markdown_files:
+        relative_path = repo_relative_path(markdown_file, git_root)
+        markdown_text, read_error = read_wiki_text(markdown_file, git_root)
+        if read_error is not None:
+            continue
+        assert markdown_text is not None
+        updated = parse_updated_frontmatter(markdown_text)
+        if updated is None:
+            continue
+        if today - updated <= datetime.timedelta(days=STALE_AFTER_DAYS):
+            continue
+        findings.append(
+            make_finding(
+                "warning",
+                "stale_page",
+                relative_path,
+                f"Wiki page updated date {updated.isoformat()} is older than {STALE_AFTER_DAYS} days.",
+                "review the page against current repo files and update updated: only after validation.",
+            )
+        )
+    return findings
+
+
 def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     conflicts: list[str] = []
     for relative_path in REQUIRED_DIRECTORIES:
@@ -577,11 +663,14 @@ def run_lint(args) -> int:
         print("No .llm-wiki directory found in the resolved Git root.")
         return 2
 
-    markdown_files = collect_markdown_files(git_root)
+    wiki_files = collect_wiki_files(git_root)
+    markdown_files = [path for path in wiki_files if path.suffix == ".md"]
     findings = [
         *check_broken_wikilinks(git_root, markdown_files),
         *check_index_coverage(git_root, markdown_files),
         *check_raw_file_sizes(git_root),
+        *check_secret_like_content(git_root, wiki_files),
+        *check_stale_pages(git_root, markdown_files),
     ]
     findings = sort_findings(findings)
     render_findings(findings, args.json)

@@ -370,7 +370,10 @@ class ProjectWikiLintTests(unittest.TestCase):
             repo = Path(tmp)
             self.init_wiki(repo)
             locked = repo / ".llm-wiki" / "raw" / "curated" / "locked.env"
-            locked.write_text("DATABASE_URL=postgres://user:pass@example.invalid/db\n", encoding="utf-8")
+            locked.write_text(
+                "DATABASE_URL=postgres://user:pass@example.invalid/db\n",
+                encoding="utf-8",
+            )
             locked.chmod(0)
             try:
                 result = self.run_helper(repo, "lint")
