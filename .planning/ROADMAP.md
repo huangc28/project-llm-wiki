@@ -10,8 +10,8 @@ Project LLM Wiki will ship as a reusable skill package that creates and maintain
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Skill Package Foundation** - Create the reusable skill package shape, command surface, and no-dependency execution contract.
-- [ ] **Phase 2: Init and Wiki Templates** - Implement safe git-root init, idempotent `.llm-wiki/` skeleton creation, and raw source policy templates.
+- [x] **Phase 1: Skill Package Foundation** - Create the reusable skill package shape, command surface, and no-dependency execution contract.
+- [x] **Phase 2: Init and Wiki Templates** - Implement safe git-root init, idempotent `.llm-wiki/` skeleton creation, and raw source policy templates.
 - [ ] **Phase 3: Lint and Safety Checks** - Add deterministic lint checks for structure, safety, freshness, and repo/wiki drift warnings.
 - [ ] **Phase 4: Query and Ingest Loop** - Implement repo-local query and curated ingest behavior with wikilink citations, provenance, index updates, and log entries.
 - [ ] **Phase 5: Agent Instructions and Real Repo Validation** - Add merge-safe AGENTS integration and validate the pattern against `peasydeal_be`.
@@ -118,8 +118,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Skill Package Foundation | 0/2 | Not started | - |
-| 2. Init and Wiki Templates | 0/3 | Not started | - |
+| 1. Skill Package Foundation | 2/2 | Complete | 2026-05-12 |
+| 2. Init and Wiki Templates | 3/3 | Complete | 2026-05-13 |
 | 3. Lint and Safety Checks | 0/3 | Not started | - |
 | 4. Query and Ingest Loop | 0/3 | Not started | - |
 | 5. Agent Instructions and Real Repo Validation | 0/3 | Not started | - |

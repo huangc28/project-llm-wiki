@@ -20,7 +20,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **INIT-03**: User can initialize a missing `.llm-wiki/` skeleton with `README.md`, `AGENTS.md`, `index.md`, `log.md`, `raw/README.md`, `raw/curated/`, `architecture/`, `domain/`, `decisions/`, `operations/`, `features/`, and `summaries/`.
 - [x] **INIT-04**: User can rerun init without overwriting existing wiki notes or duplicating generated sections.
 - [x] **INIT-05**: User can seed concise starting pages from existing repo files such as `README.md`, package manifests, `go.mod`, `pyproject.toml`, and `AGENTS.md` when those files exist.
-- [ ] **INIT-06**: User can see `.llm-wiki/` files in `git status` after init unless the target repo already ignores them.
+- [x] **INIT-06**: User can see `.llm-wiki/` files in `git status` after init unless the target repo already ignores them.
 
 ### Raw Source Policy
 
@@ -63,8 +63,8 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Validation
 
-- [ ] **TEST-01**: A clean test repo can run init and show `.llm-wiki/` files in `git status`.
-- [ ] **TEST-02**: A clean test repo can rerun init without duplicated sections or overwritten notes.
+- [x] **TEST-01**: A clean test repo can run init and show `.llm-wiki/` files in `git status`.
+- [x] **TEST-02**: A clean test repo can rerun init without duplicated sections or overwritten notes.
 - [ ] **TEST-03**: Query against seeded pages returns wiki-cited answers and appends `.llm-wiki/log.md`.
 - [ ] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
 - [ ] **TEST-05**: Lint with an intentionally secret-looking raw file reports the issue.
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INIT-03 | Phase 2 | Complete |
 | INIT-04 | Phase 2 | Complete |
 | INIT-05 | Phase 2 | Complete |
-| INIT-06 | Phase 2 | Pending |
+| INIT-06 | Phase 2 | Complete |
 | RAW-01 | Phase 2 | Complete |
 | RAW-02 | Phase 2 | Complete |
 | RAW-03 | Phase 2 | Complete |
@@ -139,8 +139,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AGENT-03 | Phase 5 | Pending |
 | AGENT-04 | Phase 5 | Pending |
 | AGENT-05 | Phase 5 | Pending |
-| TEST-01 | Phase 2 | Pending |
-| TEST-02 | Phase 2 | Pending |
+| TEST-01 | Phase 2 | Complete |
+| TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 4 | Pending |
 | TEST-04 | Phase 3 | Pending |
 | TEST-05 | Phase 3 | Pending |
@@ -154,4 +154,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 after roadmap creation*
+*Last updated: 2026-05-13 after Phase 2 verification*
