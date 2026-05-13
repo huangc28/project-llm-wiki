@@ -581,6 +581,29 @@ class ProjectWikiLintTests(unittest.TestCase):
             self.assertIn("code: secret_like_content", output)
             self.assertIn(".llm-wiki/raw/curated/secrets.env", output)
 
+    def test_lint_reports_common_pass_env_secret_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            unsafe = repo / ".llm-wiki" / "raw" / "curated" / "db.env"
+            unsafe.write_text(
+                "\n".join(
+                    [
+                        "DB_PASS=prod-db-password",
+                        "PGPASSWORD=prod-pg-password",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(repo, "lint")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("code: secret_like_content", output)
+            self.assertIn(".llm-wiki/raw/curated/db.env", output)
+
     def test_lint_reports_bare_github_fine_grained_pat(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -609,6 +632,8 @@ class ProjectWikiLintTests(unittest.TestCase):
                         "DATABASE_PASSWORD=REDACTED",
                         "SLACK_BOT_TOKEN=changeme",
                         "STRIPE_SECRET_KEY=your-token",
+                        "DB_PASS=REDACTED",
+                        "PGPASSWORD=changeme",
                         "",
                     ]
                 ),

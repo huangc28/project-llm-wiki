@@ -52,7 +52,7 @@ CREDENTIAL_URL_PATTERN = re.compile(
 SECRET_KEY_NAME_PATTERN = (
     r"(?:[a-z0-9]+[_-])*"
     r"(?:"
-    r"password|passwd|pwd|token|bearer|api[_-]?key|access[_-]?key|"
+    r"password|passwd|pwd|pass|pgpassword|token|bearer|api[_-]?key|access[_-]?key|"
     r"private[_-]?key|secret(?:[_-]?(?:key|access[_-]?key))?"
     r")"
     r"(?:[_-][a-z0-9]+)*"
