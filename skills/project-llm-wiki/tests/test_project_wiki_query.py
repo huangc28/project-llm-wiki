@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import subprocess
 import sys
 import tempfile
@@ -208,6 +209,97 @@ class ProjectWikiQueryTests(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertIn("Pages consulted: [[features/ideas]]", log_text)
+
+    def test_seeded_query_fixture_supports_cited_answer_workflow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+            (repo / ".llm-wiki" / "features" / "ideas.md").write_text(
+                "# Ideas\n\nIdeas are tracked in the repo wiki.\n",
+                encoding="utf-8",
+            )
+            overview = repo / ".llm-wiki" / "summaries" / "repo-overview.md"
+            overview.write_text(
+                overview.read_text(encoding="utf-8")
+                + "\nRelated evidence lives in [[features/ideas]].\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What does the repo wiki know about ideas?",
+            )
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("[[features/ideas]]", output)
+            self.assertIn("Direct claims require [[wikilink]] citations.", output)
+            self.assertNotIn("Final answer:", output)
+
+    def test_seeded_query_fixture_appends_log_after_answer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What does the repo wiki know about ideas?",
+                "--consulted",
+                "features/ideas",
+                "--key-insight",
+                "Ideas are tracked in the repo wiki.",
+            )
+            log_text = (repo / ".llm-wiki" / "log.md").read_text(encoding="utf-8")
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn("Pages consulted: [[features/ideas]]", log_text)
+            self.assertIn("Key insight: Ideas are tracked in the repo wiki.", log_text)
+
+    def test_seeded_query_not_covered_fixture_lists_pages_and_suggestion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What does the repo wiki know about billing?",
+                "--consulted",
+                "features/ideas",
+                "--not-covered",
+                "--suggest-source",
+                "billing architecture note",
+            )
+            output = result.stdout + result.stderr
+            log_text = (repo / ".llm-wiki" / "log.md").read_text(encoding="utf-8")
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn("Not-covered template:", output)
+            self.assertIn("Pages consulted: [[features/ideas]]", log_text)
+            self.assertIn("billing architecture note", log_text)
+
+    def test_seeded_query_json_packet_is_parseable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_wiki(repo)
+
+            result = self.run_helper(
+                repo,
+                "query",
+                "What does the repo wiki know about ideas?",
+                "--json",
+            )
+            payload = json.loads(result.stdout)
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(".llm-wiki/index.md", payload["index_path"])
+            self.assertIn("[[features/ideas]]", payload["candidate_pages"])
+            self.assertIn(
+                "Direct claims require [[wikilink]] citations.",
+                payload["answer_contract"],
+            )
 
 
 if __name__ == "__main__":
