@@ -97,3 +97,10 @@ Managed-section rule check:
 - Do not use .llm-wiki/ for active task status
 
 Conflict status: none
+
+## Package Test Evidence
+
+| Check | Command | Result | Status |
+|---|---|---|---|
+| Targeted init tests | `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/project-llm-wiki/tests -p "test_project_wiki_init.py"` | `Ran 23 tests in 2.776s; OK` | PASS |
+| Full package suite | `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/project-llm-wiki/tests` | `Ran 139 tests in 22.026s; OK` | PASS |
