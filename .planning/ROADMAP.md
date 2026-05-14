@@ -108,7 +108,7 @@ Plans:
 
 Plans:
 - [x] 05-01: Implement marker-bounded AGENTS patching and preservation tests
-- [ ] 05-02: Validate against `peasydeal_be` with dry-run reporting
+- [x] 05-02: Validate against `peasydeal_be` with dry-run reporting
 - [ ] 05-03: Document rollout checklist and next-repo application rules
 
 ## Progress
@@ -122,4 +122,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Init and Wiki Templates | 3/3 | Complete | 2026-05-13 |
 | 3. Lint and Safety Checks | 1/3 | In Progress | - |
 | 4. Query and Ingest Loop | 0/3 | Not started | - |
-| 5. Agent Instructions and Real Repo Validation | 0/3 | Not started | - |
+| 5. Agent Instructions and Real Repo Validation | 2/3 | In Progress | - |

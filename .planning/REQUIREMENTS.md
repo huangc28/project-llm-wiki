@@ -69,7 +69,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
 - [x] **TEST-05**: Lint with an intentionally secret-looking raw file reports the issue.
 - [x] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
-- [ ] **TEST-07**: The pattern is dry-run validated against `peasydeal_be` before being applied to other PeasyDeal repos.
+- [x] **TEST-07**: The pattern is dry-run validated against `peasydeal_be` before being applied to other PeasyDeal repos.
 
 ## v2 Requirements
 
@@ -145,7 +145,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-04 | Phase 3 | Complete |
 | TEST-05 | Phase 3 | Complete |
 | TEST-06 | Phase 5 | Complete |
-| TEST-07 | Phase 5 | Pending |
+| TEST-07 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 40 total

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-14T06:13:17.222Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-05-14T06:26:17.505Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 05 (agent-instructions-and-real-repo-validation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-14
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 86%
 | Phase 03-lint-and-safety-checks P03 | 9m | 2 tasks | 5 files |
 | Phase 04 P03 | 22m | 3 tasks | 5 files |
 | Phase 05 P01 | 8m | 3 tasks | 4 files |
+| Phase 05 P02 | 7m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Existing root AGENTS.md files are updated only through the exact PROJECT-LLM-WIKI marker span; marker-external bytes remain authoritative user content.
 - [Phase 05]: Root AGENTS.md patching is part of project-wiki init by default, with --no-patch-agents as the explicit opt-out.
 - [Phase 05]: Dry-run and apply share one AGENTS patch plan so conflict behavior cannot diverge between preview and write paths.
+- [Phase 05]: peasydeal_be validation remains dry-run-only; rollout evidence is recorded in this repository, not in the target repo. — Plan 05-02 proved target before/after status equality and no target .llm-wiki directory.
+- [Phase 05]: Target no-write proof requires before/after git status equality plus absence of target .llm-wiki/. — This keeps TEST-07 evidence auditable without mutating peasydeal_be.
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None
 
 ## Session Continuity
 
-Last session: 2026-05-14T06:12:42.190Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-05-14T06:26:17.498Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
