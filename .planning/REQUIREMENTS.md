@@ -55,11 +55,11 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 
 ### Agent Instructions
 
-- [ ] **AGENT-01**: User can add a short Project LLM Wiki section to repo `AGENTS.md` without overwriting unrelated agent instructions.
-- [ ] **AGENT-02**: AGENTS patching preserves existing NotebookLM sections and workflow-specific guidance.
-- [ ] **AGENT-03**: The inserted Project LLM Wiki rules tell agents to read `.llm-wiki/index.md` before non-trivial architecture, debugging, product, or onboarding work.
-- [ ] **AGENT-04**: The inserted rules state that current repo code is authoritative when it disagrees with `.llm-wiki/`.
-- [ ] **AGENT-05**: The inserted rules tell agents to update `.llm-wiki/` only after validated non-trivial work and never use it for task status.
+- [x] **AGENT-01**: User can add a short Project LLM Wiki section to repo `AGENTS.md` without overwriting unrelated agent instructions.
+- [x] **AGENT-02**: AGENTS patching preserves existing NotebookLM sections and workflow-specific guidance.
+- [x] **AGENT-03**: The inserted Project LLM Wiki rules tell agents to read `.llm-wiki/index.md` before non-trivial architecture, debugging, product, or onboarding work.
+- [x] **AGENT-04**: The inserted rules state that current repo code is authoritative when it disagrees with `.llm-wiki/`.
+- [x] **AGENT-05**: The inserted rules tell agents to update `.llm-wiki/` only after validated non-trivial work and never use it for task status.
 
 ### Validation
 
@@ -68,7 +68,7 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **TEST-03**: Query against seeded pages returns wiki-cited answers and appends `.llm-wiki/log.md`.
 - [x] **TEST-04**: Lint with an intentionally missing index entry reports the issue.
 - [x] **TEST-05**: Lint with an intentionally secret-looking raw file reports the issue.
-- [ ] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
+- [x] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
 - [ ] **TEST-07**: The pattern is dry-run validated against `peasydeal_be` before being applied to other PeasyDeal repos.
 
 ## v2 Requirements
@@ -134,17 +134,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LINT-05 | Phase 3 | Complete |
 | LINT-06 | Phase 3 | Complete |
 | LINT-07 | Phase 3 | Complete |
-| AGENT-01 | Phase 5 | Pending |
-| AGENT-02 | Phase 5 | Pending |
-| AGENT-03 | Phase 5 | Pending |
-| AGENT-04 | Phase 5 | Pending |
-| AGENT-05 | Phase 5 | Pending |
+| AGENT-01 | Phase 5 | Complete |
+| AGENT-02 | Phase 5 | Complete |
+| AGENT-03 | Phase 5 | Complete |
+| AGENT-04 | Phase 5 | Complete |
+| AGENT-05 | Phase 5 | Complete |
 | TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 4 | Complete |
 | TEST-04 | Phase 3 | Complete |
 | TEST-05 | Phase 3 | Complete |
-| TEST-06 | Phase 5 | Pending |
+| TEST-06 | Phase 5 | Complete |
 | TEST-07 | Phase 5 | Pending |
 
 **Coverage:**

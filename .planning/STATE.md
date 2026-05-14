@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 planning complete
-last_updated: "2026-05-14T04:12:39.583Z"
-last_activity: 2026-05-14 -- Phase 05 planning complete
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-05-14T06:13:17.222Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 
 ## Current Position
 
-Phase: 05 (agent-instructions-and-real-repo-validation) — READY TO EXECUTE
-Plan: 0 of 3
+Phase: 05 (agent-instructions-and-real-repo-validation) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-14 -- Phase 05 planning complete
+Last activity: 2026-05-14
 
-Progress: [████████░░] 79%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [████████░░] 79%
 | Phase 03-lint-and-safety-checks P02 | 9m | 2 tasks | 3 files |
 | Phase 03-lint-and-safety-checks P03 | 9m | 2 tasks | 5 files |
 | Phase 04 P03 | 22m | 3 tasks | 5 files |
+| Phase 05 P01 | 8m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Seeded query fixtures prove support packets and citation contracts, not final LLM prose. — Plan 04-03 keeps Python responsible for evidence packets while final semantic answers remain an agent task with wikilink citations.
 - [Phase 04]: Summary pages require explicit --summary-page intent to keep ingest page creation curated. — Plan 04-03 guards cross-cutting summaries from accidental new-page creation while preserving normal durable page creation with an explicit reason.
 - [Phase 04]: Package tests lock query/ingest CLI help and documentation against Phase 4 drift. — Plan 04-03 makes command-surface and testing references part of the normal unit suite so future changes must update documentation intentionally.
+- [Phase 05]: Existing root AGENTS.md files are updated only through the exact PROJECT-LLM-WIKI marker span; marker-external bytes remain authoritative user content.
+- [Phase 05]: Root AGENTS.md patching is part of project-wiki init by default, with --no-patch-agents as the explicit opt-out.
+- [Phase 05]: Dry-run and apply share one AGENTS patch plan so conflict behavior cannot diverge between preview and write paths.
 
 ### Pending Todos
 
@@ -114,6 +118,6 @@ None
 
 ## Session Continuity
 
-Last session: 2026-05-14T04:12:39.583Z
-Stopped at: Phase 5 planning complete
-Resume file: .planning/phases/05-agent-instructions-and-real-repo-validation/05-01-PLAN.md
+Last session: 2026-05-14T06:12:42.190Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None

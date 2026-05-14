@@ -107,7 +107,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Implement marker-bounded AGENTS patching and preservation tests
+- [x] 05-01: Implement marker-bounded AGENTS patching and preservation tests
 - [ ] 05-02: Validate against `peasydeal_be` with dry-run reporting
 - [ ] 05-03: Document rollout checklist and next-repo application rules
 
