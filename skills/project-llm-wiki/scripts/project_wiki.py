@@ -11,6 +11,9 @@ import textwrap
 
 VERSION = "0.1.0-foundation"
 WIKI_ROOT = pathlib.Path(".llm-wiki")
+ROOT_AGENTS_RELATIVE_PATH = pathlib.Path("AGENTS.md")
+ROOT_AGENTS_START_MARKER = "<!-- PROJECT-LLM-WIKI:START -->"
+ROOT_AGENTS_END_MARKER = "<!-- PROJECT-LLM-WIKI:END -->"
 REQUIRED_DIRECTORIES = tuple(
     pathlib.Path(path)
     for path in (
@@ -771,6 +774,141 @@ def find_init_conflicts(git_root: pathlib.Path) -> list[str]:
     return conflicts
 
 
+def root_agents_managed_section() -> str:
+    return "\n".join(
+        [
+            ROOT_AGENTS_START_MARKER,
+            "## Project LLM Wiki",
+            "",
+            "Before non-trivial architecture, debugging, product, onboarding, or cross-file implementation work, read `.llm-wiki/index.md` first, then only task-relevant linked pages.",
+            "",
+            "For simple typo fixes and narrow single-file edits, wiki lookup is not required.",
+            "",
+            "Current repository files are authoritative when they disagree with `.llm-wiki/`; report wiki drift when found.",
+            "",
+            "Update `.llm-wiki/` only after validated non-trivial work produces durable learning. Do not use `.llm-wiki/` for active task status.",
+            ROOT_AGENTS_END_MARKER,
+            "",
+        ]
+    )
+
+
+def build_agents_patch_plan(
+    git_root: pathlib.Path, patch_agents: bool
+) -> dict[str, object]:
+    plan: dict[str, object] = {
+        "enabled": patch_agents,
+        "relative_path": ROOT_AGENTS_RELATIVE_PATH,
+        "action": "skipped",
+        "content": "",
+        "conflicts": [],
+    }
+    if not patch_agents:
+        return plan
+
+    managed_section = root_agents_managed_section()
+    plan["content"] = managed_section
+    agents_path = git_root / ROOT_AGENTS_RELATIVE_PATH
+
+    if agents_path.is_symlink():
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: expected real file, found symlink"]
+        return plan
+    if agents_path.exists() and not agents_path.is_file():
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: expected file, found directory"]
+        return plan
+    if not path_is_under(agents_path, git_root):
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: resolves outside git root"]
+        return plan
+    if not agents_path.exists():
+        plan["action"] = "create"
+        return plan
+
+    try:
+        existing_text = agents_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        plan["action"] = "conflict"
+        plan["conflicts"] = [
+            "AGENTS.md: expected readable UTF-8, could not patch Project LLM Wiki section"
+        ]
+        return plan
+
+    start_count = existing_text.count(ROOT_AGENTS_START_MARKER)
+    end_count = existing_text.count(ROOT_AGENTS_END_MARKER)
+    if start_count == 0 and end_count == 0:
+        separator = "\n" if existing_text.endswith("\n") else "\n\n"
+        plan["action"] = "append"
+        plan["content"] = f"{existing_text}{separator}{managed_section}"
+        return plan
+    if start_count > end_count:
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: unmatched Project LLM Wiki start marker"]
+        return plan
+    if end_count > start_count:
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: unmatched Project LLM Wiki end marker"]
+        return plan
+    if start_count > 1:
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: multiple Project LLM Wiki marker pairs"]
+        return plan
+
+    start_index = existing_text.index(ROOT_AGENTS_START_MARKER)
+    end_index = existing_text.index(ROOT_AGENTS_END_MARKER)
+    if end_index < start_index:
+        plan["action"] = "conflict"
+        plan["conflicts"] = ["AGENTS.md: unmatched Project LLM Wiki end marker"]
+        return plan
+
+    end_index += len(ROOT_AGENTS_END_MARKER)
+    planned_text = (
+        existing_text[:start_index]
+        + managed_section.rstrip("\n")
+        + existing_text[end_index:]
+    )
+    plan["content"] = planned_text
+    plan["action"] = "unchanged" if planned_text == existing_text else "update"
+    return plan
+
+
+def print_agents_patch_plan(plan: dict[str, object]) -> None:
+    action = plan["action"]
+    if action == "skipped":
+        print("Root AGENTS.md: skipped by --no-patch-agents")
+        return
+    if action == "create":
+        print("Root AGENTS.md: would create")
+    elif action == "append":
+        print("Root AGENTS.md: would append managed section")
+    elif action == "update":
+        print("Root AGENTS.md: would update managed section")
+    elif action == "unchanged":
+        print("Root AGENTS.md: already up to date")
+    elif action == "conflict":
+        print("Root AGENTS.md: conflict")
+
+    print("Managed AGENTS.md section:")
+    print(root_agents_managed_section(), end="")
+
+
+def apply_agents_patch_plan(git_root: pathlib.Path, plan: dict[str, object]) -> str:
+    action = plan["action"]
+    if action == "skipped":
+        return "Root AGENTS.md: skipped by --no-patch-agents"
+    if action == "unchanged":
+        return "Root AGENTS.md: already up to date"
+    if action not in {"create", "append", "update"}:
+        return "Root AGENTS.md: already up to date"
+
+    agents_path = git_root / ROOT_AGENTS_RELATIVE_PATH
+    agents_path.write_text(str(plan["content"]), encoding="utf-8")
+    if action == "create":
+        return "Root AGENTS.md: created"
+    return "Root AGENTS.md: updated"
+
+
 def collect_missing_index_links(git_root: pathlib.Path) -> tuple[list[str], str | None]:
     index_path = git_root / ".llm-wiki" / "index.md"
     if not index_path.is_file():
@@ -1520,12 +1658,18 @@ def run_init(args) -> int:
         git_root, template_contents
     )
     would_create, would_skip = collect_init_paths(git_root)
+    agents_plan = build_agents_patch_plan(
+        git_root, patch_agents=not args.no_patch_agents
+    )
+    agents_conflicts = list(agents_plan["conflicts"])
     if args.dry_run:
         print_path_section("Would create paths:", would_create)
         print_path_section("Would skip existing paths:", would_skip)
         print_source_status(found_sources, skipped_sources)
-        if conflicts:
-            print_text_section("Conflicts:", conflicts)
+        print_agents_patch_plan(agents_plan)
+        all_conflicts = [*conflicts, *agents_conflicts]
+        if all_conflicts:
+            print_text_section("Conflicts:", all_conflicts)
             return 2
         if missing_templates:
             print_text_section("Template assets missing:", missing_templates)
@@ -1539,8 +1683,9 @@ def run_init(args) -> int:
         print("Next: review .llm-wiki/index.md")
         return 0
 
-    if conflicts:
-        print_text_section("Conflicts:", conflicts)
+    all_conflicts = [*conflicts, *agents_conflicts]
+    if all_conflicts:
+        print_text_section("Conflicts:", all_conflicts)
         return 2
 
     if missing_templates:
@@ -1556,6 +1701,7 @@ def run_init(args) -> int:
     print_path_section("Created paths:", created)
     print_path_section("Skipped existing paths:", skipped)
     print_source_status(found_sources, skipped_sources)
+    print(apply_agents_patch_plan(git_root, agents_plan))
     if missing_index_links:
         print_text_section("Missing recommended index links:", missing_index_links)
     print("Next: review .llm-wiki/index.md")
@@ -1591,6 +1737,11 @@ def build_parser():
         "--dry-run",
         action="store_true",
         help="report planned changes without writing files",
+    )
+    init.add_argument(
+        "--no-patch-agents",
+        action="store_true",
+        help="skip root AGENTS.md Project LLM Wiki section patching",
     )
     init.set_defaults(func=run_init)
 
