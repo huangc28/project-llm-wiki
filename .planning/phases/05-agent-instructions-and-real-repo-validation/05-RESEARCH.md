@@ -364,16 +364,18 @@ else:
 | A1 | Implementations often cause whitespace drift when using `splitlines()` and whole-file rejoin. | Common Pitfalls | Low; tests still protect the real invariant even if the mechanism differs. |
 | A2 | Dry-run/apply divergence usually comes from separate code paths. | Common Pitfalls | Low; recommendation to share a plan object remains valid either way. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where should the final rollout report live?**
    - What we know: Phase 5 requires a final PASS/FLAG/BLOCK report; no exact path is locked. [VERIFIED: `05-CONTEXT.md` D-20]
    - What's unclear: Whether planner should create `05-ROLLOUT-REPORT.md`, update `05-VERIFICATION.md`, or use another repo convention. [VERIFIED: current phase directory contents]
+   - **RESOLVED:** The rollout report path is `.planning/phases/05-agent-instructions-and-real-repo-validation/05-ROLLOUT-REPORT.md`.
    - Recommendation: Use `.planning/phases/05-agent-instructions-and-real-repo-validation/05-ROLLOUT-REPORT.md` so the dry-run evidence remains phase-local. [ASSUMED]
 
 2. **Should the root managed section be a Python constant or asset file?**
    - What we know: Planner has discretion over helper names and implementation factoring; root section should be short. [VERIFIED: `05-CONTEXT.md`]
    - What's unclear: Whether inspectability or implementation simplicity matters more.
+   - **RESOLVED:** Implement the root managed section as a Python constant/helper in `skills/project-llm-wiki/scripts/project_wiki.py` rather than a new template asset unless implementation evidence suggests otherwise.
    - Recommendation: Use a Python constant first; if docs/tests need a separately inspectable artifact, move it to a template asset in the same plan. [ASSUMED]
 
 ## Environment Availability
