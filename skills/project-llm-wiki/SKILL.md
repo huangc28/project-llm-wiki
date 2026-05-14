@@ -24,11 +24,21 @@ Keep durable, validated project knowledge in `.llm-wiki/`. Do not store active t
 
 Trust current repo code over .llm-wiki/ when they disagree.
 
-Phase 1 documents the package surface; later phases implement full mode behavior.
+Use `.llm-wiki/index.md` as the entry point for non-trivial wiki lookups, then read only task-relevant linked pages.
 
 ## Modes
 
-`project-wiki-init` creates the initial `.llm-wiki/` skeleton in the target repository's actual git root. Full behavior is implemented in Phase 2.
+`project-wiki-init` creates the initial `.llm-wiki/` skeleton in the target repository's actual git root and patches root `AGENTS.md` by default when safe.
+
+Use `project-wiki init --dry-run` to preview both `.llm-wiki/` and root `AGENTS.md` effects without writing.
+
+Use `project-wiki init --no-patch-agents` to skip root `AGENTS.md` patching intentionally.
+
+Root `AGENTS.md` guidance tells agents to read `.llm-wiki/index.md` before non-trivial architecture, debugging, product, onboarding, or cross-file implementation work.
+
+Root `AGENTS.md` guidance states simple typo fixes and narrow single-file edits do not require wiki lookup.
+
+Root `AGENTS.md` guidance uses index-first, relevant-pages-only lookup rather than default full scans of `.llm-wiki/`.
 
 `project-wiki-lint` checks wiki structure, safety, freshness, and repo/wiki drift. Full behavior is implemented in Phase 3.
 

@@ -3,10 +3,34 @@ phase: 05-agent-instructions-and-real-repo-validation
 report: rollout
 target_repo: /Users/huangchihan/develop/bbj/peasydeal/peasydeal_be
 dry_run_only: true
-verdict: PENDING
+verdict: PASS
 ---
 
-# Phase 05 Rollout Report
+# Phase 5 Rollout Report
+
+Verdict: PASS
+
+PASS means targeted init tests, full package suite, and peasydeal_be dry-run all passed and target status stayed unchanged.
+
+FLAG means tests and dry-run pass but manual confirmation items remain.
+
+BLOCK means conflicts, preservation risk, dry-run failure, target status change, or package test failure exists.
+
+## Next-Repo Application Rules
+
+Next targets: peasydeal_web, peasydeal-product-miner
+
+Run from the target git root, not from /Users/huangchihan/develop/bbj or another parent workspace.
+
+First command for every next repo: project-wiki init --dry-run
+
+Record git status --short before and after dry-run.
+
+Do not run project-wiki init without --dry-run unless the dry-run has no conflicts and the target repo owner accepts the root AGENTS.md managed section.
+
+If root AGENTS.md has invalid UTF-8, unmatched markers, or multiple Project LLM Wiki marker pairs, stop and repair manually before applying.
+
+Use --no-patch-agents only when the repo intentionally wants .llm-wiki/ without root AGENTS.md integration.
 
 ## peasydeal_be Dry-Run Evidence
 
