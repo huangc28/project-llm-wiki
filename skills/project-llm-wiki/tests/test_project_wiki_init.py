@@ -2,12 +2,27 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / "skills" / "project-llm-wiki"
 HELPER = PACKAGE / "scripts" / "project_wiki.py"
+ROOT_AGENTS_START_MARKER = "<!-- PROJECT-LLM-WIKI:START -->"
+ROOT_AGENTS_END_MARKER = "<!-- PROJECT-LLM-WIKI:END -->"
+ROOT_AGENTS_MANAGED_SECTION = """<!-- PROJECT-LLM-WIKI:START -->
+## Project LLM Wiki
+
+Before non-trivial architecture, debugging, product, onboarding, or cross-file implementation work, read `.llm-wiki/index.md` first, then only task-relevant linked pages.
+
+For simple typo fixes and narrow single-file edits, wiki lookup is not required.
+
+Current repository files are authoritative when they disagree with `.llm-wiki/`; report wiki drift when found.
+
+Update `.llm-wiki/` only after validated non-trivial work produces durable learning. Do not use `.llm-wiki/` for active task status.
+<!-- PROJECT-LLM-WIKI:END -->
+"""
 
 
 class ProjectWikiInitTests(unittest.TestCase):
@@ -48,6 +63,234 @@ class ProjectWikiInitTests(unittest.TestCase):
             text=True,
             check=False,
         )
+
+    def marker_external_bytes(self, content: bytes) -> bytes:
+        start_marker = ROOT_AGENTS_START_MARKER.encode("utf-8")
+        end_marker = ROOT_AGENTS_END_MARKER.encode("utf-8")
+        start = content.index(start_marker)
+        end = content.index(end_marker, start) + len(end_marker)
+        return content[:start] + content[end:]
+
+    def test_init_creates_root_agents_when_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(
+                ROOT_AGENTS_MANAGED_SECTION,
+                (repo / "AGENTS.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn("Root AGENTS.md: created", output)
+
+    def test_init_appends_project_wiki_section_without_overwriting_existing_agents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = textwrap.dedent(
+                """\
+                # Agent Instructions
+
+                ## Repo-Specific Workflow
+
+                Keep this local deployment rule.
+                """
+            )
+            (repo / "AGENTS.md").write_text(original, encoding="utf-8")
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            updated = (repo / "AGENTS.md").read_text(encoding="utf-8")
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertTrue(updated.startswith(original), updated)
+            self.assertIn(ROOT_AGENTS_MANAGED_SECTION, updated)
+            self.assertIn("Root AGENTS.md: updated", output)
+
+    def test_init_updates_only_marker_bounded_project_wiki_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = textwrap.dedent(
+                """\
+                # Agent Instructions
+
+                Prefix rule stays untouched.
+
+                <!-- PROJECT-LLM-WIKI:START -->
+                Old wiki instructions that should be replaced.
+                <!-- PROJECT-LLM-WIKI:END -->
+
+                Suffix rule stays untouched.
+                """
+            ).encode("utf-8")
+            agents = repo / "AGENTS.md"
+            agents.write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            updated = agents.read_bytes()
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(
+                self.marker_external_bytes(original),
+                self.marker_external_bytes(updated),
+            )
+            updated_text = updated.decode("utf-8")
+            self.assertIn(ROOT_AGENTS_MANAGED_SECTION.rstrip("\n"), updated_text)
+            self.assertNotIn("Old wiki instructions", updated_text)
+            self.assertIn("Root AGENTS.md: updated", output)
+
+    def test_init_preserves_notebooklm_gsd_and_workflow_sections_byte_for_byte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = textwrap.dedent(
+                """\
+                # Agent Instructions
+
+                ## NotebookLM Second Brain
+
+                Keep this NotebookLM retrieval guidance byte-for-byte.
+
+                <!-- PROJECT-LLM-WIKI:START -->
+                Old managed wiki section.
+                <!-- PROJECT-LLM-WIKI:END -->
+
+                ## GSD Workflow Enforcement
+
+                Keep this GSD workflow rule byte-for-byte.
+
+                ## Repo-Specific Workflow
+
+                Keep this repo-specific workflow byte-for-byte.
+                """
+            ).encode("utf-8")
+            agents = repo / "AGENTS.md"
+            agents.write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            updated = agents.read_bytes()
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(
+                self.marker_external_bytes(original),
+                self.marker_external_bytes(updated),
+            )
+            for section in (
+                b"## NotebookLM Second Brain",
+                b"## GSD Workflow Enforcement",
+                b"## Repo-Specific Workflow",
+            ):
+                self.assertIn(section, updated)
+
+    def test_dry_run_reports_managed_agents_section_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+
+            result = self.run_helper(repo, "init", "--dry-run")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertFalse((repo / ".llm-wiki").exists())
+            self.assertFalse((repo / "AGENTS.md").exists())
+            self.assertIn("Root AGENTS.md: would create", output)
+            self.assertIn("Managed AGENTS.md section:", output)
+            self.assertIn(ROOT_AGENTS_MANAGED_SECTION, output)
+
+    def test_init_no_patch_agents_skips_root_agents_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = b"# Agent Instructions\n\nDo not change this file.\n"
+            (repo / "AGENTS.md").write_bytes(original)
+
+            result = self.run_helper(repo, "init", "--no-patch-agents")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(original, (repo / "AGENTS.md").read_bytes())
+            self.assertTrue((repo / ".llm-wiki" / "index.md").is_file())
+            self.assertIn("Root AGENTS.md: skipped by --no-patch-agents", output)
+
+    def test_init_rejects_invalid_utf8_root_agents_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = b"\xff\xfeinvalid root agents\n"
+            (repo / "AGENTS.md").write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn(
+                "AGENTS.md: expected readable UTF-8, could not patch Project LLM Wiki section",
+                output,
+            )
+            self.assertEqual(original, (repo / "AGENTS.md").read_bytes())
+            self.assertFalse((repo / ".llm-wiki").exists())
+
+    def test_init_rejects_unmatched_project_wiki_marker_without_writing(self):
+        cases = (
+            (
+                "start",
+                f"# Agents\n\n{ROOT_AGENTS_START_MARKER}\nMissing end\n",
+                "AGENTS.md: unmatched Project LLM Wiki start marker",
+            ),
+            (
+                "end",
+                f"# Agents\n\nMissing start\n{ROOT_AGENTS_END_MARKER}\n",
+                "AGENTS.md: unmatched Project LLM Wiki end marker",
+            ),
+        )
+        for _name, content, expected in cases:
+            with self.subTest(marker=_name):
+                with tempfile.TemporaryDirectory() as tmp:
+                    repo = Path(tmp)
+                    self.init_repo(repo)
+                    original = content.encode("utf-8")
+                    (repo / "AGENTS.md").write_bytes(original)
+
+                    result = self.run_helper(repo, "init")
+                    output = result.stdout + result.stderr
+
+                    self.assertEqual(2, result.returncode, output)
+                    self.assertIn(expected, output)
+                    self.assertEqual(original, (repo / "AGENTS.md").read_bytes())
+                    self.assertFalse((repo / ".llm-wiki").exists())
+
+    def test_init_rejects_duplicate_project_wiki_markers_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = textwrap.dedent(
+                f"""\
+                # Agents
+
+                {ROOT_AGENTS_START_MARKER}
+                First section.
+                {ROOT_AGENTS_END_MARKER}
+
+                {ROOT_AGENTS_START_MARKER}
+                Second section.
+                {ROOT_AGENTS_END_MARKER}
+                """
+            ).encode("utf-8")
+            (repo / "AGENTS.md").write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+
+            self.assertEqual(2, result.returncode, output)
+            self.assertIn("AGENTS.md: multiple Project LLM Wiki marker pairs", output)
+            self.assertEqual(original, (repo / "AGENTS.md").read_bytes())
+            self.assertFalse((repo / ".llm-wiki").exists())
 
     def test_init_creates_wiki_at_git_root_from_subdirectory(self):
         with tempfile.TemporaryDirectory() as tmp:

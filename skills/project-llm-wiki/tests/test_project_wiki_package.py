@@ -88,6 +88,13 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("--json", result.stdout)
 
+    def test_init_help_documents_agents_patch_flags(self):
+        result = self.run_helper("init", "--help")
+
+        self.assertEqual(0, result.returncode)
+        self.assertIn("--dry-run", result.stdout)
+        self.assertIn("--no-patch-agents", result.stdout)
+
     def test_query_help_documents_phase_4_flags(self):
         result = self.run_helper("query", "--help")
 
