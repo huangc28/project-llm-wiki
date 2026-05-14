@@ -10,7 +10,27 @@ The reusable package exposes one `project-llm-wiki` skill plus thin alias skills
 
 ### project-wiki-init
 
-Implemented mode for detecting the current repository's actual Git root and creating an idempotent `.llm-wiki/` skeleton.
+Implemented mode for detecting the current repository's actual Git root, creating an idempotent `.llm-wiki/` skeleton, and patching root `AGENTS.md` with a short Project LLM Wiki managed section when safe.
+
+Initialize the current Git root:
+
+`project-wiki init`
+
+Preview all init effects without writing:
+
+`project-wiki init --dry-run`
+
+Initialize `.llm-wiki/` while intentionally skipping root `AGENTS.md` patching:
+
+`project-wiki init --no-patch-agents`
+
+By default, init patches root AGENTS.md with a short Project LLM Wiki managed section when safe.
+
+--dry-run reports both .llm-wiki skeleton effects and root AGENTS.md effects, including the exact managed section.
+
+--no-patch-agents skips root AGENTS.md patching.
+
+Invalid UTF-8, unmatched Project LLM Wiki markers, or multiple Project LLM Wiki marker pairs are conflicts.
 
 ### project-wiki-lint
 
@@ -117,5 +137,4 @@ Potential future alias:
 
 Full command behavior is deferred to later phases:
 
-- Promotion of validated learnings into `.llm-wiki/`
-- AGENTS integration and real repo validation: Phase 5
+- Promotion of validated learnings into .llm-wiki/

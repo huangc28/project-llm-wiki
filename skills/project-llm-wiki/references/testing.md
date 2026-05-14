@@ -18,6 +18,10 @@ Run the targeted Phase 4 ingest suite with:
 
 `python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_ingest.py`
 
+Run the targeted Phase 5 init/AGENTS suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_init.py`
+
 ## Phase 2 Validation Contract
 
 Phase 2 tests verify the init behavior before production implementation turns the
@@ -100,6 +104,45 @@ The ingest validation suite covers:
 video sources require transcript, summary, or curated notes before core ingest.
 `$watch-video` can be a local preprocessing helper, but it is not required by
 Project LLM Wiki.
+
+## Phase 5 Validation Contract
+
+Phase 5 tests and rollout evidence verify merge-safe root `AGENTS.md`
+integration before the pattern is applied to additional PeasyDeal repositories.
+
+The init/AGENTS validation suite covers:
+
+- AGENT-01: root `AGENTS.md` receives a short Project LLM Wiki managed section
+  without overwriting unrelated agent instructions.
+- AGENT-02: existing NotebookLM sections and workflow-specific guidance are
+  preserved outside the managed marker span.
+- AGENT-03: inserted rules tell agents to read `.llm-wiki/index.md` before
+  non-trivial architecture, debugging, product, onboarding, or cross-file
+  implementation work.
+- AGENT-04: inserted rules state that current repository files are authoritative
+  when they disagree with `.llm-wiki/`.
+- AGENT-05: inserted rules tell agents to update `.llm-wiki/` only after
+  validated non-trivial durable learning and never use it for task status.
+- TEST-06: preservation fixtures cover a root `AGENTS.md` with existing
+  NotebookLM and workflow sections.
+- TEST-07: `/Users/huangchihan/develop/bbj/peasydeal/peasydeal_be` is validated
+  as dry-run only before applying the pattern to other PeasyDeal repos.
+
+Run the targeted Phase 5 init/AGENTS suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_init.py`
+
+Run the full package suite with:
+
+`python3 -m unittest discover -s skills/project-llm-wiki/tests`
+
+The rollout report must use exactly one `PASS / FLAG / BLOCK` verdict:
+
+- `PASS`: targeted init tests, full package suite, and `peasydeal_be` dry-run
+  all passed and target status stayed unchanged.
+- `FLAG`: tests and dry-run pass but manual confirmation items remain.
+- `BLOCK`: conflicts, preservation risk, dry-run failure, target status change,
+  or package test failure exists.
 
 ## No Dependency Rule
 
