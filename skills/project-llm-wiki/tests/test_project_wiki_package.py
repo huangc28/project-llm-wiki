@@ -157,6 +157,25 @@ class ProjectWikiPackageTests(unittest.TestCase):
             self.assertIn(expected, command_surface)
         self.assertNotIn("Query and ingest loop: Phase 4", command_surface)
 
+    def test_command_surface_documents_completed_agents_integration_contract(self):
+        command_surface = (PACKAGE / "references" / "command-surface.md").read_text()
+
+        for expected in (
+            "project-wiki init",
+            "project-wiki init --dry-run",
+            "project-wiki init --no-patch-agents",
+            "By default, init patches root AGENTS.md with a short Project LLM Wiki managed section when safe.",
+            "--dry-run reports both .llm-wiki skeleton effects and root AGENTS.md effects, including the exact managed section.",
+            "--no-patch-agents skips root AGENTS.md patching.",
+            "Invalid UTF-8, unmatched Project LLM Wiki markers, or multiple Project LLM Wiki marker pairs are conflicts.",
+            "Promotion of validated learnings into .llm-wiki/",
+        ):
+            self.assertIn(expected, command_surface)
+        self.assertNotIn(
+            "AGENTS integration and real repo validation: Phase 5",
+            command_surface,
+        )
+
     def test_testing_reference_documents_phase_3_validation_contract(self):
         testing_reference = (PACKAGE / "references" / "testing.md").read_text()
 
@@ -186,6 +205,26 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "INGEST-05",
             "TEST-03",
             "video sources require transcript, summary, or curated notes",
+        ):
+            self.assertIn(expected, testing_reference)
+
+    def test_testing_reference_documents_phase_5_validation_contract(self):
+        testing_reference = (PACKAGE / "references" / "testing.md").read_text()
+
+        for expected in (
+            "Run the targeted Phase 5 init/AGENTS suite with:",
+            'python3 -m unittest discover -s skills/project-llm-wiki/tests -p test_project_wiki_init.py',
+            "Phase 5 Validation Contract",
+            "AGENT-01",
+            "AGENT-02",
+            "AGENT-03",
+            "AGENT-04",
+            "AGENT-05",
+            "TEST-06",
+            "TEST-07",
+            "/Users/huangchihan/develop/bbj/peasydeal/peasydeal_be",
+            "dry-run only",
+            "PASS / FLAG / BLOCK",
         ):
             self.assertIn(expected, testing_reference)
 
