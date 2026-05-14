@@ -14,7 +14,7 @@ Project LLM Wiki will ship as a reusable skill package that creates and maintain
 - [x] **Phase 2: Init and Wiki Templates** - Implement safe git-root init, idempotent `.llm-wiki/` skeleton creation, and raw source policy templates.
 - [ ] **Phase 3: Lint and Safety Checks** - Add deterministic lint checks for structure, safety, freshness, and repo/wiki drift warnings.
 - [ ] **Phase 4: Query and Ingest Loop** - Implement repo-local query and curated ingest behavior with wikilink citations, provenance, index updates, and log entries.
-- [ ] **Phase 5: Agent Instructions and Real Repo Validation** - Add merge-safe AGENTS integration and validate the pattern against `peasydeal_be`.
+- [x] **Phase 5: Agent Instructions and Real Repo Validation** - Add merge-safe AGENTS integration and validate the pattern against `peasydeal_be`.
 
 ## Phase Details
 
@@ -109,7 +109,7 @@ Plans:
 Plans:
 - [x] 05-01: Implement marker-bounded AGENTS patching and preservation tests
 - [x] 05-02: Validate against `peasydeal_be` with dry-run reporting
-- [ ] 05-03: Document rollout checklist and next-repo application rules
+- [x] 05-03: Document rollout checklist and next-repo application rules
 
 ## Progress
 
@@ -122,4 +122,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Init and Wiki Templates | 3/3 | Complete | 2026-05-13 |
 | 3. Lint and Safety Checks | 1/3 | In Progress | - |
 | 4. Query and Ingest Loop | 0/3 | Not started | - |
-| 5. Agent Instructions and Real Repo Validation | 2/3 | In Progress | - |
+| 5. Agent Instructions and Real Repo Validation | 3/3 | Complete | 2026-05-14 |
