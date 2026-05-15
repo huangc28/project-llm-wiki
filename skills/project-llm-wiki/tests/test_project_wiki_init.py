@@ -110,6 +110,28 @@ class ProjectWikiInitTests(unittest.TestCase):
             self.assertIn(ROOT_AGENTS_MANAGED_SECTION, updated)
             self.assertIn("Root AGENTS.md: updated", output)
 
+    def test_init_appends_to_crlf_agents_without_rewriting_existing_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = (
+                b"# Agent Instructions\r\n"
+                b"\r\n"
+                b"## NotebookLM Second Brain\r\n"
+                b"Keep this retrieval rule byte-for-byte.\r\n"
+            )
+            agents = repo / "AGENTS.md"
+            agents.write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            updated = agents.read_bytes()
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertTrue(updated.startswith(original), updated)
+            self.assertIn(ROOT_AGENTS_MANAGED_SECTION.encode("utf-8"), updated)
+            self.assertIn("Root AGENTS.md: updated", output)
+
     def test_init_updates_only_marker_bounded_project_wiki_section(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -142,6 +164,39 @@ class ProjectWikiInitTests(unittest.TestCase):
             updated_text = updated.decode("utf-8")
             self.assertIn(ROOT_AGENTS_MANAGED_SECTION.rstrip("\n"), updated_text)
             self.assertNotIn("Old wiki instructions", updated_text)
+            self.assertIn("Root AGENTS.md: updated", output)
+
+    def test_init_updates_crlf_marker_section_without_mutating_external_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self.init_repo(repo)
+            original = (
+                b"# Agent Instructions\r\n"
+                b"\r\n"
+                b"Prefix rule stays untouched.\r\n"
+                b"\r\n"
+                + ROOT_AGENTS_START_MARKER.encode("utf-8")
+                + b"\r\n"
+                b"Old wiki instructions that should be replaced.\r\n"
+                + ROOT_AGENTS_END_MARKER.encode("utf-8")
+                + b"\r\n"
+                b"\r\n"
+                b"Suffix rule stays untouched.\r\n"
+            )
+            agents = repo / "AGENTS.md"
+            agents.write_bytes(original)
+
+            result = self.run_helper(repo, "init")
+            output = result.stdout + result.stderr
+            updated = agents.read_bytes()
+
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(
+                self.marker_external_bytes(original),
+                self.marker_external_bytes(updated),
+            )
+            self.assertIn(ROOT_AGENTS_MANAGED_SECTION.rstrip("\n").encode("utf-8"), updated)
+            self.assertNotIn(b"Old wiki instructions", updated)
             self.assertIn("Root AGENTS.md: updated", output)
 
     def test_init_preserves_notebooklm_gsd_and_workflow_sections_byte_for_byte(self):

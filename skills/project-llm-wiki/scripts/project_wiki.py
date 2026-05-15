@@ -793,6 +793,14 @@ def root_agents_managed_section() -> str:
     )
 
 
+def agents_append_separator(existing_bytes: bytes) -> bytes:
+    if existing_bytes.endswith(b"\r\n"):
+        return b"\r\n"
+    if existing_bytes.endswith(b"\n"):
+        return b"\n"
+    return b"\n\n"
+
+
 def build_agents_patch_plan(
     git_root: pathlib.Path, patch_agents: bool
 ) -> dict[str, object]:
@@ -801,13 +809,16 @@ def build_agents_patch_plan(
         "relative_path": ROOT_AGENTS_RELATIVE_PATH,
         "action": "skipped",
         "content": "",
+        "content_bytes": b"",
         "conflicts": [],
     }
     if not patch_agents:
         return plan
 
     managed_section = root_agents_managed_section()
+    managed_section_bytes = managed_section.encode("utf-8")
     plan["content"] = managed_section
+    plan["content_bytes"] = managed_section_bytes
     agents_path = git_root / ROOT_AGENTS_RELATIVE_PATH
 
     if agents_path.is_symlink():
@@ -827,7 +838,8 @@ def build_agents_patch_plan(
         return plan
 
     try:
-        existing_text = agents_path.read_text(encoding="utf-8")
+        existing_bytes = agents_path.read_bytes()
+        existing_text = existing_bytes.decode("utf-8")
     except (OSError, UnicodeDecodeError):
         plan["action"] = "conflict"
         plan["conflicts"] = [
@@ -835,12 +847,16 @@ def build_agents_patch_plan(
         ]
         return plan
 
-    start_count = existing_text.count(ROOT_AGENTS_START_MARKER)
-    end_count = existing_text.count(ROOT_AGENTS_END_MARKER)
+    start_marker_bytes = ROOT_AGENTS_START_MARKER.encode("utf-8")
+    end_marker_bytes = ROOT_AGENTS_END_MARKER.encode("utf-8")
+    start_count = existing_bytes.count(start_marker_bytes)
+    end_count = existing_bytes.count(end_marker_bytes)
     if start_count == 0 and end_count == 0:
-        separator = "\n" if existing_text.endswith("\n") else "\n\n"
+        separator = agents_append_separator(existing_bytes)
+        planned_bytes = existing_bytes + separator + managed_section_bytes
         plan["action"] = "append"
-        plan["content"] = f"{existing_text}{separator}{managed_section}"
+        plan["content"] = planned_bytes.decode("utf-8")
+        plan["content_bytes"] = planned_bytes
         return plan
     if start_count > end_count:
         plan["action"] = "conflict"
@@ -855,21 +871,22 @@ def build_agents_patch_plan(
         plan["conflicts"] = ["AGENTS.md: multiple Project LLM Wiki marker pairs"]
         return plan
 
-    start_index = existing_text.index(ROOT_AGENTS_START_MARKER)
-    end_index = existing_text.index(ROOT_AGENTS_END_MARKER)
+    start_index = existing_bytes.index(start_marker_bytes)
+    end_index = existing_bytes.index(end_marker_bytes)
     if end_index < start_index:
         plan["action"] = "conflict"
         plan["conflicts"] = ["AGENTS.md: unmatched Project LLM Wiki end marker"]
         return plan
 
-    end_index += len(ROOT_AGENTS_END_MARKER)
-    planned_text = (
-        existing_text[:start_index]
-        + managed_section.rstrip("\n")
-        + existing_text[end_index:]
+    end_index += len(end_marker_bytes)
+    planned_bytes = (
+        existing_bytes[:start_index]
+        + managed_section.rstrip("\n").encode("utf-8")
+        + existing_bytes[end_index:]
     )
-    plan["content"] = planned_text
-    plan["action"] = "unchanged" if planned_text == existing_text else "update"
+    plan["content"] = planned_bytes.decode("utf-8")
+    plan["content_bytes"] = planned_bytes
+    plan["action"] = "unchanged" if planned_bytes == existing_bytes else "update"
     return plan
 
 
@@ -903,7 +920,7 @@ def apply_agents_patch_plan(git_root: pathlib.Path, plan: dict[str, object]) -> 
         return "Root AGENTS.md: already up to date"
 
     agents_path = git_root / ROOT_AGENTS_RELATIVE_PATH
-    agents_path.write_text(str(plan["content"]), encoding="utf-8")
+    agents_path.write_bytes(bytes(plan["content_bytes"]))
     if action == "create":
         return "Root AGENTS.md: created"
     return "Root AGENTS.md: updated"
