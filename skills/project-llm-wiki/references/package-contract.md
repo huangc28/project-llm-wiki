@@ -2,11 +2,13 @@
 
 ## Source Of Truth
 
-This repository is the working source of truth for the reusable Project LLM Wiki skill package during Phase 1.
+This repository is the working source of truth for the reusable Project LLM Wiki skill package.
 
-Phase 1 does not install into global skill directories.
+Phase 1 did not install into global skill directories.
 
-Future installation may mirror, copy, or symlink the package into a runtime skill directory after this repository proves the package shape and tests.
+Phase 6 adds a Codex skill installer that symlinks the package-owned skills into `${CODEX_HOME:-~/.codex}/skills` or an explicit `--target` directory.
+
+The installer only manages skill symlinks. It does not initialize `.llm-wiki/`, does not patch project `AGENTS.md`, and does not mutate target repositories.
 
 ## Package Boundary
 
@@ -16,16 +18,16 @@ Package-owned files include skill instructions, deterministic helper scripts, wi
 
 The package must keep durable project knowledge separate from active task state. `.llm-wiki/` is for curated project knowledge; `.planning/`, Linear, OMX, workflow files, and pull requests are for volatile execution state.
 
-## Non-Goals For Phase 1
+## Non-Goals For Install
 
-Phase 1 does not initialize .llm-wiki/ in target repositories.
+Install does not initialize .llm-wiki/ in target repositories.
 
-Phase 1 does not implement full init, lint, query, ingest, promotion, or AGENTS patch behavior.
+Install does not implement repo-local init, lint, query, ingest, promotion, or AGENTS patch behavior. Those remain separate helper modes and must run from the intended target repository.
 
-Phase 1 does not mutate PeasyDeal repositories, parent workspaces, or the user's global skill directories.
+Install does not mutate PeasyDeal repositories, parent workspaces, or any project repository.
 
-## Future Installation
+## Installation Boundary
 
-Later phases can define how this package is installed or mirrored into `~/.codex/skills`, a vault-managed skills directory, or another supported skill runtime.
+`project-wiki install` may create, skip, replace, or remove package-owned symlinks in a Codex skills directory.
 
-Any future installation flow must preserve the repo-local source-of-truth contract and avoid writing project wiki content outside the target repository's actual git root.
+It must preserve the repo-local source-of-truth contract and avoid writing project wiki content outside the target repository's actual git root.

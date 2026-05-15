@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 05 complete
-last_updated: "2026-05-15T09:36:42Z"
+status: verifying
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-05-15T11:54:48.387Z"
 last_activity: 2026-05-15
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 **Core value:** Future agents and contributors can recover durable project context from the repository itself without confusing curated project knowledge with volatile task state.
-**Current focus:** Phase 05 — agent-instructions-and-real-repo-validation
+**Current focus:** Phase 06 — user-friendly-installer-and-installation-docs
 
 ## Current Position
 
-Phase: 05 (agent-instructions-and-real-repo-validation) — COMPLETE
-Plan: 3 of 3
-Status: Phase complete
-Last activity: 2026-05-15 - Completed quick task 260515-od6: Improve project-wiki-init UX to apply by default
+Phase: 06 (user-friendly-installer-and-installation-docs) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-05-15
 
 Progress: [██████████] 100%
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 05 P01 | 8m | 3 tasks | 4 files |
 | Phase 05 P02 | 7m | 2 tasks | 2 files |
 | Phase 05 P03 | 8m | 3 tasks | 6 files |
+| Phase 06 P01 | 21min | 4 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,13 @@ Recent decisions affecting current work:
 - [Phase 05]: Target no-write proof requires before/after git status equality plus absence of target .llm-wiki/. — This keeps TEST-07 evidence auditable without mutating peasydeal_be.
 - [Phase 05]: Final Phase 5 rollout verdict is PASS after package tests, peasydeal_be dry-run, target status, and no-write checks all passed. — Plan 05-03 finalized the report and verified the evidence before metadata completion.
 - [Phase 05]: Next PeasyDeal repos must start with project-wiki init --dry-run from each target git root before any non-dry-run application. — The rollout checklist preserves dry-run-only validation and prevents parent-workspace writes.
+- [Phase 06]: Public installation should optimize for the shortest user-facing path: `curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash`, restart Codex, then `$project-wiki-init`.
+- [Phase 06]: `install.sh` is a thin bootstrap; durable install behavior belongs in `project_wiki.py install` so it remains Python stdlib and unit-testable.
+- [Phase 06]: Install and init remain separate write boundaries. Install writes only Codex skills; init writes only target repo `.llm-wiki/` and root `AGENTS.md`.
+
+### Roadmap Evolution
+
+- Phase 6 added: User-friendly installer and installation docs.
 
 ### Pending Todos
 
@@ -127,6 +135,6 @@ None
 
 ## Session Continuity
 
-Last session: 2026-05-14T06:39:59.754Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-05-15T11:54:48.378Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

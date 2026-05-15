@@ -15,6 +15,7 @@ Project LLM Wiki will ship as a reusable skill package that creates and maintain
 - [ ] **Phase 3: Lint and Safety Checks** - Add deterministic lint checks for structure, safety, freshness, and repo/wiki drift warnings.
 - [ ] **Phase 4: Query and Ingest Loop** - Implement repo-local query and curated ingest behavior with wikilink citations, provenance, index updates, and log entries.
 - [x] **Phase 5: Agent Instructions and Real Repo Validation** - Add merge-safe AGENTS integration and validate the pattern against `peasydeal_be`.
+- [ ] **Phase 6: User-friendly Installer and Installation Docs** - Make Project LLM Wiki installable with one user-facing command while preserving the existing init boundary.
 
 ## Phase Details
 
@@ -114,7 +115,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -123,3 +124,21 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 3. Lint and Safety Checks | 1/3 | In Progress | - |
 | 4. Query and Ingest Loop | 0/3 | Not started | - |
 | 5. Agent Instructions and Real Repo Validation | 3/3 | Complete | 2026-05-15 |
+| 6. User-friendly Installer and Installation Docs | 0/1 | Not started | - |
+
+### Phase 6: User-friendly installer and installation docs
+
+**Goal:** Make Project LLM Wiki installable with one user-facing command while keeping package installation separate from target-repo `.llm-wiki/` initialization.
+**Requirements**: [INSTALL-01, INSTALL-02, INSTALL-03, INSTALL-04, INSTALL-05, INSTALL-06, TEST-08, TEST-09, TEST-10]
+**Depends on:** Phase 5
+**UI hint**: no
+**Success Criteria** (what must be TRUE):
+  1. User can install the Codex skills with a single README command: `curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash`.
+  2. The installer delegates durable install logic to `project_wiki.py install` so the core behavior is Python stdlib and unit-testable.
+  3. Installation writes only to the Codex skill install target and never initializes `.llm-wiki/` in the current repo.
+  4. Re-running install is safe and idempotent, and conflicts with real existing skill directories are refused.
+  5. README quick start reduces to install, restart Codex, then run `$project-wiki-init` in a target git repo.
+**Plans**: 1 plan
+
+Plans:
+- [x] 06-01: Implement one-command installer, install subcommand, docs, and tests

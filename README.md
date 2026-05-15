@@ -9,43 +9,90 @@ Keep elsewhere: active task state (`.planning/`, Linear, debug notes, workflow f
 
 ## Status
 
-This is the reusable Phase 1 skill package. It targets Codex via `AGENTS.md` patching. There is no installer yet — the Install section below uses manual symlinks, and the helper script is location-agnostic so you can also run it from a clone. Claude Code and other runtimes are out of scope for this phase.
+This is the reusable Project LLM Wiki skill package for Codex. It includes a user-facing installer for the Codex skill aliases plus repo-local `init`, `lint`, `query`, and `ingest` helper modes. Claude Code and other runtimes are out of scope for this package.
 
 ## Install
 
-Two paths, both supported:
+Recommended install:
 
 ```bash
-# Option A — install as Codex skills (recommended for daily use).
+curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash
+```
+
+Then restart Codex so it reloads the installed skills.
+
+The installer clones or updates the package under `${PROJECT_LLM_WIKI_HOME:-$HOME/.local/share/project-llm-wiki}` and installs five symlinks into `${CODEX_HOME:-$HOME/.codex}/skills`:
+
+- `project-llm-wiki`
+- `project-wiki-init`
+- `project-wiki-lint`
+- `project-wiki-query`
+- `project-wiki-ingest`
+
+Preview without writing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash -s -- --dry-run
+```
+
+Use `--force` only to replace stale Project LLM Wiki symlinks, and `--uninstall` to remove only symlinks owned by this package.
+
+## Quick Start
+
+Restart Codex after install. In any target Git repo, run:
+
+```text
+$project-wiki-init
+```
+
+That creates or updates `.llm-wiki/` in that repo's actual Git root. After that, use:
+
+```text
+$project-wiki-lint
+$project-wiki-query: What does this repo wiki know about the auth flow?
+$project-wiki-ingest: Add this curated note to the wiki: ...
+```
+
+`$skill-name` invokes a Codex skill in the current session. The alias skills are thin wrappers around the main skill at:
+
+```text
+skills/project-llm-wiki/SKILL.md
+```
+
+## Advanced Install Options
+
+Manual clone plus installer:
+
+```bash
+git clone https://github.com/huangc28/project-llm-wiki.git
+cd project-llm-wiki
+python3 ./skills/project-llm-wiki/scripts/project_wiki.py install
+```
+
+Custom Codex skills target:
+
+```bash
+python3 ./skills/project-llm-wiki/scripts/project_wiki.py install --target ~/.codex/skills
+```
+
+Manual symlink fallback:
+
+```bash
 # Run from the project-llm-wiki repo root:
 ln -s "$(pwd)/skills/project-llm-wiki"    ~/.codex/skills/
 ln -s "$(pwd)/skills/project-wiki-init"   ~/.codex/skills/
 ln -s "$(pwd)/skills/project-wiki-lint"   ~/.codex/skills/
 ln -s "$(pwd)/skills/project-wiki-query"  ~/.codex/skills/
 ln -s "$(pwd)/skills/project-wiki-ingest" ~/.codex/skills/
+```
 
-# Option B — run the helper script directly from the clone (no install required):
+Run the helper directly from a clone without installing:
+
+```bash
 python3 ./skills/project-llm-wiki/scripts/project_wiki.py --help
 ```
 
-The helper script discovers its template assets relative to its own location, so both paths work without configuration.
-
-## Quick Start
-
-`$skill-name` invokes a Codex skill in the current session. After installing the aliases (Option A above), open a new Codex session in any target repo and use:
-
-```text
-$project-wiki-init
-$project-wiki-lint
-$project-wiki-query: What does this repo wiki know about the auth flow?
-$project-wiki-ingest: Add this curated note to the wiki: ...
-```
-
-The alias skills are thin wrappers around the main skill at:
-
-```text
-skills/project-llm-wiki/SKILL.md
-```
+The helper script discovers its template assets relative to its own location, so installed symlinks and direct clone usage both work without configuration.
 
 ## What `init` Produces
 
@@ -83,7 +130,7 @@ Content outside those markers is preserved byte-for-byte. Re-running init update
 
 ## Updating Existing Repos
 
-If a project already uses an older Project LLM Wiki setup, re-run the same init flow. First update or reinstall this skill package (re-run the symlink commands or `git pull` in the clone), then run `$project-wiki-init` in the target repo's git root.
+If a project already uses an older Project LLM Wiki setup, re-run the installer, restart Codex, then run `$project-wiki-init` in the target repo's git root.
 
 The alias initializes or updates the repo by default. Re-running is idempotent: existing `.llm-wiki/` notes are preserved, missing skeleton files are added, and root `AGENTS.md` is patched in place when there are no conflicts.
 
@@ -132,6 +179,7 @@ python3 $SKILL/scripts/project_wiki.py ingest \
 
 Key flags worth knowing:
 
+- `install`: `--target`, `--dry-run`, `--force`, `--uninstall`
 - `init`: `--dry-run`, `--no-patch-agents`
 - `lint`: `--json`
 - `query`: `--consulted PAGE`, `--key-insight TEXT`, `--not-covered`, `--json`
@@ -154,6 +202,7 @@ Full command surface and flag semantics: `skills/project-llm-wiki/references/com
 
 ## Safety Rules
 
+- Install only manages Codex skill symlinks. It does not create `.llm-wiki/` or patch a project `AGENTS.md`.
 - Run init from the actual project repo, not a multi-repo parent folder.
 - Trust current code over `.llm-wiki/` if they disagree.
 - Store only curated, validated, non-secret knowledge in `.llm-wiki/`.

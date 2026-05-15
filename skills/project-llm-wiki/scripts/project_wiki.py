@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -44,6 +45,13 @@ REQUIRED_FILES = tuple(
         ".llm-wiki/decisions/.gitkeep",
         ".llm-wiki/operations/.gitkeep",
     )
+)
+INSTALL_SKILL_NAMES = (
+    "project-llm-wiki",
+    "project-wiki-init",
+    "project-wiki-lint",
+    "project-wiki-query",
+    "project-wiki-ingest",
 )
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
 WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
@@ -248,6 +256,118 @@ def path_is_under(path: pathlib.Path, root: pathlib.Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def package_skills_root() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parents[2]
+
+
+def default_install_target() -> pathlib.Path:
+    codex_home = os.environ.get("CODEX_HOME")
+    if codex_home:
+        return pathlib.Path(codex_home).expanduser() / "skills"
+    return pathlib.Path.home() / ".codex" / "skills"
+
+
+def install_sources() -> dict[str, pathlib.Path]:
+    root = package_skills_root()
+    return {name: root / name for name in INSTALL_SKILL_NAMES}
+
+
+def collect_install_plan(
+    target_dir: pathlib.Path, force: bool, uninstall: bool
+) -> tuple[list[tuple[str, str, pathlib.Path, pathlib.Path]], list[str]]:
+    actions: list[tuple[str, str, pathlib.Path, pathlib.Path]] = []
+    conflicts: list[str] = []
+    sources = install_sources()
+    source_root = package_skills_root()
+
+    for name, source in sources.items():
+        target = target_dir / name
+        if not source.is_dir():
+            conflicts.append(f"{name}: source skill directory is missing at {source}")
+            continue
+
+        if uninstall:
+            if target.is_symlink() and path_is_under(
+                target.resolve(strict=False), source_root
+            ):
+                actions.append(("remove", name, source, target))
+            elif target.is_symlink():
+                actions.append(("preserve", name, source, target))
+            elif target.exists():
+                actions.append(("preserve", name, source, target))
+            else:
+                actions.append(("absent", name, source, target))
+            continue
+
+        if target.is_symlink():
+            if target.resolve(strict=False) == source.resolve():
+                actions.append(("skip", name, source, target))
+            elif force:
+                actions.append(("replace", name, source, target))
+            else:
+                conflicts.append(
+                    f"{name}: existing symlink points to {target.resolve(strict=False)}; "
+                    "rerun with --force to replace it"
+                )
+            continue
+
+        if target.exists():
+            conflicts.append(
+                f"{name}: {target} already exists and is not a symlink; move it first"
+            )
+            continue
+
+        actions.append(("create", name, source, target))
+
+    return actions, conflicts
+
+
+def print_install_plan(
+    actions: list[tuple[str, str, pathlib.Path, pathlib.Path]],
+    dry_run: bool,
+    uninstall: bool,
+) -> None:
+    headings = {
+        "create": "Would install skills:" if dry_run else "Installed skills:",
+        "replace": "Would replace symlinks:" if dry_run else "Replaced symlinks:",
+        "skip": "Skipped existing skills:",
+        "remove": "Would remove skills:" if dry_run else "Removed skills:",
+        "preserve": "Preserved foreign entries:",
+        "absent": "Already absent:",
+    }
+    order = ("create", "replace", "skip", "remove", "preserve", "absent")
+    if uninstall:
+        order = ("remove", "preserve", "absent")
+
+    for action in order:
+        names = [
+            name
+            for current_action, name, _source, _target in actions
+            if current_action == action
+        ]
+        if names:
+            print_text_section(headings[action], names)
+
+
+def apply_install_plan(
+    target_dir: pathlib.Path, actions: list[tuple[str, str, pathlib.Path, pathlib.Path]]
+) -> None:
+    needs_target_dir = any(
+        action in {"create", "replace"} for action, _name, _source, _target in actions
+    )
+    if needs_target_dir:
+        target_dir.mkdir(exist_ok=True)
+
+    for action, _name, source, target in actions:
+        if action == "create":
+            target.symlink_to(source, target_is_directory=True)
+        elif action == "replace":
+            target.unlink()
+            target.symlink_to(source, target_is_directory=True)
+        elif action == "remove":
+            target.unlink()
 
 
 def path_has_symlink_component(root: pathlib.Path, relative_path: pathlib.Path) -> bool:
@@ -1655,6 +1775,49 @@ def run_ingest(args) -> int:
     return 0
 
 
+def run_install(args) -> int:
+    target_dir = pathlib.Path(args.target).expanduser()
+    print(f"Install target: {target_dir}")
+
+    if target_dir.exists() and not target_dir.is_dir():
+        print_text_section(
+            "Conflicts:",
+            [f"{target_dir} exists and is not a directory"],
+        )
+        return 2
+
+    if not target_dir.parent.exists():
+        print_text_section(
+            "Conflicts:",
+            [
+                f"Codex home does not exist: {target_dir.parent}",
+                "Install or run Codex first, or pass --target to an existing Codex home.",
+            ],
+        )
+        return 2
+
+    actions, conflicts = collect_install_plan(target_dir, args.force, args.uninstall)
+    print_install_plan(actions, args.dry_run, args.uninstall)
+
+    if conflicts:
+        print_text_section("Conflicts:", conflicts)
+        return 2
+
+    if args.dry_run:
+        if args.uninstall:
+            print("Dry run only; no skill symlinks were removed.")
+        else:
+            print("Dry run only; no skill symlinks were installed.")
+        return 0
+
+    apply_install_plan(target_dir, actions)
+    if args.uninstall:
+        print("Project LLM Wiki skills uninstalled from this target.")
+    else:
+        print("Next: restart Codex, then run $project-wiki-init in a target Git repo")
+    return 0
+
+
 def run_init(args) -> int:
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
@@ -1761,6 +1924,31 @@ def build_parser():
         help="skip root AGENTS.md Project LLM Wiki section patching",
     )
     init.set_defaults(func=run_init)
+
+    install = subcommands.add_parser(
+        "install", help="install Project LLM Wiki Codex skill symlinks"
+    )
+    install.add_argument(
+        "--target",
+        default=str(default_install_target()),
+        help="Codex skills directory to install into; defaults to ${CODEX_HOME:-~/.codex}/skills",
+    )
+    install.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report planned skill symlink changes without writing files",
+    )
+    install.add_argument(
+        "--force",
+        action="store_true",
+        help="replace existing stale symlinks that point somewhere else",
+    )
+    install.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="remove only Project LLM Wiki symlinks owned by this package",
+    )
+    install.set_defaults(func=run_install)
 
     lint = subcommands.add_parser("lint", help="lint .llm-wiki structure")
     lint.add_argument("--json", action="store_true", help="render lint findings as JSON")

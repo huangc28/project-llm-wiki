@@ -8,6 +8,34 @@ The reusable package exposes one `project-llm-wiki` skill plus thin alias skills
 
 ## Modes
 
+### project-wiki install
+
+Implemented installer mode for linking the reusable Project LLM Wiki skill package into a Codex skills directory.
+
+Install into `${CODEX_HOME:-~/.codex}/skills`:
+
+`project-wiki install`
+
+Preview symlink changes without writing:
+
+`project-wiki install --dry-run`
+
+Install into an explicit Codex skills directory:
+
+`project-wiki install --target PATH`
+
+Replace stale symlinks that point somewhere else:
+
+`project-wiki install --force`
+
+Remove only Project LLM Wiki symlinks owned by this package:
+
+`project-wiki install --uninstall`
+
+Install creates symlinks for `project-llm-wiki`, `project-wiki-init`, `project-wiki-lint`, `project-wiki-query`, and `project-wiki-ingest`. Correct existing symlinks are no-ops. Existing real files or directories are conflicts. Existing symlinks that point somewhere else are conflicts unless `--force` is present. Uninstall preserves foreign symlinks and real directories.
+
+Install does not initialize a target repository, create `.llm-wiki/`, or patch root `AGENTS.md`. Repository mutation stays behind `project-wiki init` inside the target repo's actual Git root.
+
 ### project-wiki-init
 
 Implemented mode for detecting the current repository's actual Git root, creating an idempotent `.llm-wiki/` skeleton, and patching root `AGENTS.md` with a short Project LLM Wiki managed section when safe.
@@ -135,6 +163,6 @@ Potential future alias:
 
 ## Deferred Behavior
 
-Full command behavior is deferred to later phases:
+The remaining planned command surface is:
 
 - Promotion of validated learnings into .llm-wiki/

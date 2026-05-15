@@ -71,6 +71,21 @@ Requirements for the initial reusable skill release. Each maps to roadmap phases
 - [x] **TEST-06**: AGENTS patching against a fixture with an existing NotebookLM section preserves that section.
 - [x] **TEST-07**: The pattern is dry-run validated against `peasydeal_be` before being applied to other PeasyDeal repos.
 
+### Installation UX
+
+- [x] **INSTALL-01**: User can install Project LLM Wiki with one README command: `curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash`.
+- [x] **INSTALL-02**: The public installer is a thin bootstrap that clones or updates the package into a stable user-local directory and delegates install behavior to `project_wiki.py install`.
+- [x] **INSTALL-03**: `project_wiki.py install` installs the five Codex skills into `${CODEX_HOME:-~/.codex}/skills` without third-party dependencies.
+- [x] **INSTALL-04**: Install and target-repo init remain separate: install never writes `.llm-wiki/` or root `AGENTS.md`, and init never writes global skill directories.
+- [x] **INSTALL-05**: Re-running install is idempotent and refuses to overwrite real files or directories in the skill target.
+- [x] **INSTALL-06**: User-facing docs show the shortest path first: install command, restart Codex, then `$project-wiki-init`.
+
+### Installer Validation
+
+- [x] **TEST-08**: Installer tests prove the five expected skills are installed and rerunning install is a no-op.
+- [x] **TEST-09**: Installer tests prove dry-run writes nothing, real-directory conflicts are refused, and force only replaces stale symlinks.
+- [x] **TEST-10**: Installer tests prove install/uninstall stay inside the skill target and never create `.llm-wiki/` or patch root `AGENTS.md`.
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -146,10 +161,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-05 | Phase 3 | Complete |
 | TEST-06 | Phase 5 | Complete |
 | TEST-07 | Phase 5 | Complete |
+| INSTALL-01 | Phase 6 | Planned |
+| INSTALL-02 | Phase 6 | Planned |
+| INSTALL-03 | Phase 6 | Planned |
+| INSTALL-04 | Phase 6 | Planned |
+| INSTALL-05 | Phase 6 | Planned |
+| INSTALL-06 | Phase 6 | Planned |
+| TEST-08 | Phase 6 | Planned |
+| TEST-09 | Phase 6 | Planned |
+| TEST-10 | Phase 6 | Planned |
 
 **Coverage:**
-- v1 requirements: 40 total
-- Mapped to phases: 40
+- v1 requirements: 49 total
+- Mapped to phases: 49
 - Unmapped: 0
 
 ---

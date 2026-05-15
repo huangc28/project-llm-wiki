@@ -54,18 +54,29 @@ class ProjectWikiPackageTests(unittest.TestCase):
     def test_package_contract_states_local_boundary(self):
         contract = (PACKAGE / "references" / "package-contract.md").read_text()
 
-        self.assertIn("Phase 1 does not install into global skill directories.", contract)
+        self.assertIn("Phase 6 adds a Codex skill installer", contract)
+        self.assertIn("The installer only manages skill symlinks.", contract)
+        self.assertIn("does not initialize `.llm-wiki/`", contract)
 
     def test_readme_points_to_skill_package(self):
         readme = (ROOT / "README.md").read_text()
 
         self.assertIn("skills/project-llm-wiki/SKILL.md", readme)
 
+    def test_root_install_script_delegates_to_helper_install(self):
+        installer = (ROOT / "install.sh").read_text()
+
+        self.assertIn("https://github.com/huangc28/project-llm-wiki.git", installer)
+        self.assertIn("project_wiki.py\" install \"$@\"", installer)
+        self.assertIn("Restart Codex", installer)
+
     def test_readme_documents_user_getting_started_flow(self):
         readme = (ROOT / "README.md").read_text()
 
         for expected in (
             "Quick Start",
+            "curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash",
+            "Restart Codex",
             "$project-wiki-init",
             "$project-wiki-lint",
             "$project-wiki-query",
@@ -112,6 +123,13 @@ class ProjectWikiPackageTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("--dry-run", result.stdout)
         self.assertIn("--no-patch-agents", result.stdout)
+
+    def test_install_help_documents_safety_flags(self):
+        result = self.run_helper("install", "--help")
+
+        self.assertEqual(0, result.returncode)
+        for expected in ("--target", "--dry-run", "--force", "--uninstall"):
+            self.assertIn(expected, result.stdout)
 
     def test_query_help_documents_phase_4_flags(self):
         result = self.run_helper("query", "--help")
@@ -182,6 +200,9 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "project-wiki init",
             "project-wiki init --dry-run",
             "project-wiki init --no-patch-agents",
+            "project-wiki install --dry-run",
+            "project-wiki install --target",
+            "project-wiki install --uninstall",
             "By default, init patches root AGENTS.md with a short Project LLM Wiki managed section when safe.",
             "--dry-run reports both .llm-wiki skeleton effects and root AGENTS.md effects, including the exact managed section.",
             "--no-patch-agents skips root AGENTS.md patching.",
@@ -273,6 +294,7 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "argparse",
             "datetime",
             "json",
+            "os",
             "pathlib",
             "re",
             "subprocess",
