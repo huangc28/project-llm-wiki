@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/inst
 
 Then restart Codex so it reloads the installed skills.
 
-The installer clones or updates the package under `${PROJECT_LLM_WIKI_HOME:-$HOME/.local/share/project-llm-wiki}` and installs five symlinks into `${CODEX_HOME:-$HOME/.codex}/skills`:
+The installer temporarily clones this repo, copies five skill directories into `${CODEX_HOME:-$HOME/.codex}/skills`, and deletes the temporary clone after installation:
 
 - `project-llm-wiki`
 - `project-wiki-init`
@@ -35,7 +35,7 @@ Preview without writing:
 curl -fsSL https://raw.githubusercontent.com/huangc28/project-llm-wiki/main/install.sh | bash -s -- --dry-run
 ```
 
-Use `--force` only to replace stale Project LLM Wiki symlinks, and `--uninstall` to remove only symlinks owned by this package.
+Use `--force` only to replace an old symlink install, and `--uninstall` to remove only marker-owned Project LLM Wiki skill directories.
 
 ## Quick Start
 
@@ -75,7 +75,7 @@ Custom Codex skills target:
 python3 ./skills/project-llm-wiki/scripts/project_wiki.py install --target ~/.codex/skills
 ```
 
-Manual symlink fallback:
+Legacy symlink fallback:
 
 ```bash
 # Run from the project-llm-wiki repo root:
@@ -92,7 +92,7 @@ Run the helper directly from a clone without installing:
 python3 ./skills/project-llm-wiki/scripts/project_wiki.py --help
 ```
 
-The helper script discovers its template assets relative to its own location, so installed symlinks and direct clone usage both work without configuration.
+The helper script discovers its template assets relative to its own location, so copied installs and direct clone usage both work without configuration.
 
 ## What `init` Produces
 
@@ -149,7 +149,7 @@ Use `--no-patch-agents` to update `.llm-wiki/` without touching root `AGENTS.md`
 The helper script works from any path. Set `SKILL` once:
 
 ```bash
-SKILL=~/.codex/skills/project-llm-wiki   # if you symlinked
+SKILL=~/.codex/skills/project-llm-wiki   # if installed
 # or
 SKILL=./skills/project-llm-wiki          # if running from the clone
 ```
@@ -202,7 +202,7 @@ Full command surface and flag semantics: `skills/project-llm-wiki/references/com
 
 ## Safety Rules
 
-- Install only manages Codex skill symlinks. It does not create `.llm-wiki/` or patch a project `AGENTS.md`.
+- Install only manages marker-owned Codex skill directories. It does not create `.llm-wiki/` or patch a project `AGENTS.md`.
 - Run init from the actual project repo, not a multi-repo parent folder.
 - Trust current code over `.llm-wiki/` if they disagree.
 - Store only curated, validated, non-secret knowledge in `.llm-wiki/`.

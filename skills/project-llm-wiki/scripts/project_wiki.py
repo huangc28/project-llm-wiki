@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -53,6 +54,8 @@ INSTALL_SKILL_NAMES = (
     "project-wiki-query",
     "project-wiki-ingest",
 )
+INSTALL_MARKER_FILE = ".project-llm-wiki-install.json"
+INSTALL_MARKER_PACKAGE = "project-llm-wiki"
 RECOMMENDED_INDEX_LINKS = ("[[features/ideas]]", "[[summaries/repo-overview]]")
 WIKILINK_PATTERN = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 INLINE_CODE_SPAN_PATTERN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
@@ -274,13 +277,51 @@ def install_sources() -> dict[str, pathlib.Path]:
     return {name: root / name for name in INSTALL_SKILL_NAMES}
 
 
+def install_marker_path(skill_dir: pathlib.Path) -> pathlib.Path:
+    return skill_dir / INSTALL_MARKER_FILE
+
+
+def is_marker_owned_skill(skill_dir: pathlib.Path, skill_name: str) -> bool:
+    if skill_dir.is_symlink() or not skill_dir.is_dir():
+        return False
+    marker_path = install_marker_path(skill_dir)
+    if not marker_path.is_file():
+        return False
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        marker.get("package") == INSTALL_MARKER_PACKAGE
+        and marker.get("skill") == skill_name
+    )
+
+
+def write_install_marker(skill_dir: pathlib.Path, skill_name: str) -> None:
+    marker = {
+        "package": INSTALL_MARKER_PACKAGE,
+        "skill": skill_name,
+        "version": VERSION,
+    }
+    install_marker_path(skill_dir).write_text(
+        json.dumps(marker, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def remove_install_target(target: pathlib.Path) -> None:
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.is_dir():
+        shutil.rmtree(target)
+
+
 def collect_install_plan(
     target_dir: pathlib.Path, force: bool, uninstall: bool
 ) -> tuple[list[tuple[str, str, pathlib.Path, pathlib.Path]], list[str]]:
     actions: list[tuple[str, str, pathlib.Path, pathlib.Path]] = []
     conflicts: list[str] = []
     sources = install_sources()
-    source_root = package_skills_root()
 
     for name, source in sources.items():
         target = target_dir / name
@@ -289,33 +330,31 @@ def collect_install_plan(
             continue
 
         if uninstall:
-            if target.is_symlink() and path_is_under(
-                target.resolve(strict=False), source_root
-            ):
+            if is_marker_owned_skill(target, name):
                 actions.append(("remove", name, source, target))
-            elif target.is_symlink():
-                actions.append(("preserve", name, source, target))
-            elif target.exists():
+            elif target.is_symlink() or target.exists():
                 actions.append(("preserve", name, source, target))
             else:
                 actions.append(("absent", name, source, target))
             continue
 
         if target.is_symlink():
-            if target.resolve(strict=False) == source.resolve():
-                actions.append(("skip", name, source, target))
-            elif force:
+            if force:
                 actions.append(("replace", name, source, target))
             else:
                 conflicts.append(
                     f"{name}: existing symlink points to {target.resolve(strict=False)}; "
-                    "rerun with --force to replace it"
+                    "rerun with --force to replace it with a copied skill directory"
                 )
             continue
 
         if target.exists():
+            if is_marker_owned_skill(target, name):
+                actions.append(("update", name, source, target))
+                continue
             conflicts.append(
-                f"{name}: {target} already exists and is not a symlink; move it first"
+                f"{name}: {target} already exists and is not managed by "
+                "this installer; move it first"
             )
             continue
 
@@ -331,13 +370,25 @@ def print_install_plan(
 ) -> None:
     headings = {
         "create": "Would install skills:" if dry_run else "Installed skills:",
-        "replace": "Would replace symlinks:" if dry_run else "Replaced symlinks:",
-        "skip": "Skipped existing skills:",
-        "remove": "Would remove skills:" if dry_run else "Removed skills:",
+        "update": (
+            "Would update installed skills:"
+            if dry_run
+            else "Updated installed skills:"
+        ),
+        "replace": (
+            "Would replace existing paths:"
+            if dry_run
+            else "Replaced existing paths:"
+        ),
+        "remove": (
+            "Would remove installed skills:"
+            if dry_run
+            else "Removed installed skills:"
+        ),
         "preserve": "Preserved foreign entries:",
         "absent": "Already absent:",
     }
-    order = ("create", "replace", "skip", "remove", "preserve", "absent")
+    order = ("create", "update", "replace", "remove", "preserve", "absent")
     if uninstall:
         order = ("remove", "preserve", "absent")
 
@@ -355,19 +406,24 @@ def apply_install_plan(
     target_dir: pathlib.Path, actions: list[tuple[str, str, pathlib.Path, pathlib.Path]]
 ) -> None:
     needs_target_dir = any(
-        action in {"create", "replace"} for action, _name, _source, _target in actions
+        action in {"create", "replace", "update"}
+        for action, _name, _source, _target in actions
     )
     if needs_target_dir:
         target_dir.mkdir(exist_ok=True)
 
-    for action, _name, source, target in actions:
-        if action == "create":
-            target.symlink_to(source, target_is_directory=True)
-        elif action == "replace":
-            target.unlink()
-            target.symlink_to(source, target_is_directory=True)
+    for action, name, source, target in actions:
+        if action in {"create", "replace", "update"}:
+            if target.is_symlink() or target.exists():
+                remove_install_target(target)
+            shutil.copytree(
+                source,
+                target,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
+            write_install_marker(target, name)
         elif action == "remove":
-            target.unlink()
+            remove_install_target(target)
 
 
 def path_has_symlink_component(root: pathlib.Path, relative_path: pathlib.Path) -> bool:
@@ -1796,6 +1852,19 @@ def run_install(args) -> int:
         )
         return 2
 
+    if (
+        not args.uninstall
+        and target_dir.resolve(strict=False) == package_skills_root().resolve()
+    ):
+        print_text_section(
+            "Conflicts:",
+            [
+                "Install source and target are the same directory.",
+                "Run install.sh from a fresh checkout or temporary clone before installing.",
+            ],
+        )
+        return 2
+
     actions, conflicts = collect_install_plan(target_dir, args.force, args.uninstall)
     print_install_plan(actions, args.dry_run, args.uninstall)
 
@@ -1805,9 +1874,9 @@ def run_install(args) -> int:
 
     if args.dry_run:
         if args.uninstall:
-            print("Dry run only; no skill symlinks were removed.")
+            print("Dry run only; no skill directories were removed.")
         else:
-            print("Dry run only; no skill symlinks were installed.")
+            print("Dry run only; no skill directories were installed.")
         return 0
 
     apply_install_plan(target_dir, actions)
@@ -1926,7 +1995,7 @@ def build_parser():
     init.set_defaults(func=run_init)
 
     install = subcommands.add_parser(
-        "install", help="install Project LLM Wiki Codex skill symlinks"
+        "install", help="install Project LLM Wiki Codex skill directories"
     )
     install.add_argument(
         "--target",
@@ -1936,17 +2005,17 @@ def build_parser():
     install.add_argument(
         "--dry-run",
         action="store_true",
-        help="report planned skill symlink changes without writing files",
+        help="report planned skill directory changes without writing files",
     )
     install.add_argument(
         "--force",
         action="store_true",
-        help="replace existing stale symlinks that point somewhere else",
+        help="replace existing symlinks with copied skill directories",
     )
     install.add_argument(
         "--uninstall",
         action="store_true",
-        help="remove only Project LLM Wiki symlinks owned by this package",
+        help="remove only Project LLM Wiki directories owned by this installer",
     )
     install.set_defaults(func=run_install)
 

@@ -10,13 +10,13 @@ The reusable package exposes one `project-llm-wiki` skill plus thin alias skills
 
 ### project-wiki install
 
-Implemented installer mode for linking the reusable Project LLM Wiki skill package into a Codex skills directory.
+Implemented installer mode for copying the reusable Project LLM Wiki skill package into a Codex skills directory.
 
 Install into `${CODEX_HOME:-~/.codex}/skills`:
 
 `project-wiki install`
 
-Preview symlink changes without writing:
+Preview skill directory changes without writing:
 
 `project-wiki install --dry-run`
 
@@ -24,15 +24,15 @@ Install into an explicit Codex skills directory:
 
 `project-wiki install --target PATH`
 
-Replace stale symlinks that point somewhere else:
+Replace an old symlink install with copied skill directories:
 
 `project-wiki install --force`
 
-Remove only Project LLM Wiki symlinks owned by this package:
+Remove only Project LLM Wiki skill directories owned by this installer:
 
 `project-wiki install --uninstall`
 
-Install creates symlinks for `project-llm-wiki`, `project-wiki-init`, `project-wiki-lint`, `project-wiki-query`, and `project-wiki-ingest`. Correct existing symlinks are no-ops. Existing real files or directories are conflicts. Existing symlinks that point somewhere else are conflicts unless `--force` is present. Uninstall preserves foreign symlinks and real directories.
+Install copies `project-llm-wiki`, `project-wiki-init`, `project-wiki-lint`, `project-wiki-query`, and `project-wiki-ingest`. Each copied directory includes `.project-llm-wiki-install.json` so re-install and uninstall can identify package-owned paths. Existing unmarked files or directories are conflicts. Existing symlinks are conflicts unless `--force` is present. Uninstall preserves foreign symlinks and unmarked directories.
 
 Install does not initialize a target repository, create `.llm-wiki/`, or patch root `AGENTS.md`. Repository mutation stays behind `project-wiki init` inside the target repo's actual Git root.
 

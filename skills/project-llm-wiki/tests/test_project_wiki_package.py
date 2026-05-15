@@ -55,7 +55,7 @@ class ProjectWikiPackageTests(unittest.TestCase):
         contract = (PACKAGE / "references" / "package-contract.md").read_text()
 
         self.assertIn("Phase 6 adds a Codex skill installer", contract)
-        self.assertIn("The installer only manages skill symlinks.", contract)
+        self.assertIn("The installer only manages marker-owned skill directories.", contract)
         self.assertIn("does not initialize `.llm-wiki/`", contract)
 
     def test_readme_points_to_skill_package(self):
@@ -67,8 +67,11 @@ class ProjectWikiPackageTests(unittest.TestCase):
         installer = (ROOT / "install.sh").read_text()
 
         self.assertIn("https://github.com/huangc28/project-llm-wiki.git", installer)
+        self.assertIn("mktemp -d", installer)
+        self.assertIn("trap", installer)
         self.assertIn("project_wiki.py\" install \"$@\"", installer)
         self.assertIn("Restart Codex", installer)
+        self.assertNotIn("$HOME/.local/share/project-llm-wiki", installer)
 
     def test_readme_documents_user_getting_started_flow(self):
         readme = (ROOT / "README.md").read_text()
@@ -297,6 +300,7 @@ class ProjectWikiPackageTests(unittest.TestCase):
             "os",
             "pathlib",
             "re",
+            "shutil",
             "subprocess",
             "sys",
             "textwrap",

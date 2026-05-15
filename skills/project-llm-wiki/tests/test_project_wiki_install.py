@@ -16,6 +16,7 @@ SKILL_NAMES = (
     "project-wiki-query",
     "project-wiki-ingest",
 )
+MARKER_FILE = ".project-llm-wiki-install.json"
 
 
 class ProjectWikiInstallTests(unittest.TestCase):
@@ -32,21 +33,25 @@ class ProjectWikiInstallTests(unittest.TestCase):
         codex_home.mkdir()
         return codex_home / "skills"
 
-    def assert_installed_links(self, target: Path):
+    def assert_installed_skill_dirs(self, target: Path):
         for name in SKILL_NAMES:
             with self.subTest(name=name):
-                link = target / name
-                self.assertTrue(link.is_symlink(), f"{link} is not a symlink")
-                self.assertEqual((SKILLS_ROOT / name).resolve(), link.resolve())
+                skill_dir = target / name
+                self.assertTrue(skill_dir.is_dir(), f"{skill_dir} is not a directory")
+                self.assertFalse(skill_dir.is_symlink(), f"{skill_dir} is a symlink")
+                self.assertTrue((skill_dir / "SKILL.md").is_file())
+                marker = skill_dir / MARKER_FILE
+                self.assertTrue(marker.is_file(), f"{marker} is missing")
+                self.assertIn(f'"skill": "{name}"', marker.read_text())
 
-    def test_fresh_install_creates_expected_skill_symlinks(self):
+    def test_fresh_install_creates_expected_skill_directories(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = self.make_target(Path(tmp))
 
             result = self.run_install("--target", str(target))
 
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assert_installed_links(target)
+            self.assert_installed_skill_dirs(target)
 
     def test_install_is_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -57,8 +62,8 @@ class ProjectWikiInstallTests(unittest.TestCase):
 
             self.assertEqual(0, first.returncode, first.stdout + first.stderr)
             self.assertEqual(0, second.returncode, second.stdout + second.stderr)
-            self.assertIn("Skipped existing skills:", second.stdout)
-            self.assert_installed_links(target)
+            self.assertIn("Updated installed skills:", second.stdout)
+            self.assert_installed_skill_dirs(target)
 
     def test_dry_run_reports_plan_without_writing(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,7 +75,7 @@ class ProjectWikiInstallTests(unittest.TestCase):
             self.assertIn("Would install skills:", result.stdout)
             self.assertFalse(target.exists())
 
-    def test_existing_real_directory_aborts_without_partial_install(self):
+    def test_existing_unmarked_directory_aborts_without_partial_install(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = self.make_target(Path(tmp))
             target.mkdir()
@@ -87,7 +92,7 @@ class ProjectWikiInstallTests(unittest.TestCase):
                     continue
                 self.assertFalse((target / name).exists(), f"{name} was partially installed")
 
-    def test_stale_symlink_requires_force_then_replaces(self):
+    def test_existing_symlink_requires_force_then_replaces_with_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             target = self.make_target(tmp_path)
@@ -102,31 +107,47 @@ class ProjectWikiInstallTests(unittest.TestCase):
 
             self.assertEqual(2, blocked.returncode, blocked.stdout + blocked.stderr)
             self.assertEqual(0, forced.returncode, forced.stdout + forced.stderr)
-            self.assertEqual((SKILLS_ROOT / "project-wiki-init").resolve(), stale_link.resolve())
-            self.assert_installed_links(target)
+            self.assertFalse(stale_link.is_symlink())
+            self.assertTrue((stale_link / "SKILL.md").is_file())
+            self.assert_installed_skill_dirs(target)
 
-    def test_uninstall_removes_only_package_owned_symlinks(self):
+    def test_uninstall_removes_only_marker_owned_directories(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             target = self.make_target(tmp_path)
             install = self.run_install("--target", str(target))
             self.assertEqual(0, install.returncode, install.stdout + install.stderr)
-            foreign_source = tmp_path / "foreign-skill"
-            foreign_source.mkdir()
-            foreign_link = target / "project-wiki-query"
-            foreign_link.unlink()
-            foreign_link.symlink_to(foreign_source, target_is_directory=True)
+            foreign_dir = target / "project-wiki-query"
+            marker = foreign_dir / MARKER_FILE
+            marker.unlink()
+            (foreign_dir / "custom.txt").write_text("foreign")
 
             result = self.run_install("--target", str(target), "--uninstall")
 
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             for name in SKILL_NAMES:
-                link = target / name
+                skill_dir = target / name
                 if name == "project-wiki-query":
-                    self.assertTrue(link.is_symlink())
-                    self.assertEqual(foreign_source.resolve(), link.resolve())
+                    self.assertTrue(skill_dir.is_dir())
+                    self.assertEqual("foreign", (skill_dir / "custom.txt").read_text())
                 else:
-                    self.assertFalse(link.exists(), f"{name} was not removed")
+                    self.assertFalse(skill_dir.exists(), f"{name} was not removed")
+
+    def test_uninstall_preserves_foreign_symlinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            target = self.make_target(tmp_path)
+            target.mkdir()
+            foreign_source = tmp_path / "foreign-skill"
+            foreign_source.mkdir()
+            foreign_link = target / "project-wiki-query"
+            foreign_link.symlink_to(foreign_source, target_is_directory=True)
+
+            result = self.run_install("--target", str(target), "--uninstall")
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertTrue(foreign_link.is_symlink())
+            self.assertEqual(foreign_source.resolve(), foreign_link.resolve())
 
     def test_install_does_not_initialize_repo_or_modify_root_agents(self):
         with tempfile.TemporaryDirectory() as tmp:
