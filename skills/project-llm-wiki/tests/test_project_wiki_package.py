@@ -43,6 +43,14 @@ class ProjectWikiPackageTests(unittest.TestCase):
                 self.assertIn("project-llm-wiki", text)
                 self.assertIn(mode_phrase, text)
 
+    def test_project_wiki_init_alias_applies_by_default(self):
+        alias = (ROOT / "skills" / "project-wiki-init" / "SKILL.md").read_text()
+
+        self.assertIn("Run `project-wiki init` by default", alias)
+        self.assertIn("initializes or updates the repo immediately", alias)
+        self.assertIn("Run `project-wiki init --dry-run` only when", alias)
+        self.assertNotIn("Prefer `init --dry-run` before writing", alias)
+
     def test_package_contract_states_local_boundary(self):
         contract = (PACKAGE / "references" / "package-contract.md").read_text()
 
@@ -70,6 +78,16 @@ class ProjectWikiPackageTests(unittest.TestCase):
             self.assertIn(expected, readme)
         self.assertNotIn("Current phase: Phase 1", readme)
         self.assertNotIn("Later phases add deterministic init", readme)
+
+    def test_readme_documents_apply_by_default_update_flow(self):
+        readme = (ROOT / "README.md").read_text()
+
+        self.assertIn("Updating Existing Repos", readme)
+        self.assertIn("The alias initializes or updates the repo by default.", readme)
+        self.assertIn("If you want to inspect the update before writing", readme)
+        self.assertIn("project_wiki.py init --dry-run", readme)
+        self.assertIn("project_wiki.py init", readme)
+        self.assertNotIn("The alias should run `project-wiki init --dry-run` first", readme)
 
     def test_helper_help_exits_zero(self):
         result = self.run_helper("--help")

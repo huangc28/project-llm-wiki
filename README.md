@@ -27,27 +27,29 @@ skills/project-llm-wiki/SKILL.md
 
 If a project already uses an older Project LLM Wiki setup, use the same init flow as a safe update path.
 
-First update or reinstall this skill package so the target project is using the new helper and skill files. Then open Codex in the target project's actual Git root and preview the update:
+First update or reinstall this skill package so the target project is using the new helper and skill files. Then open Codex in the target project's actual Git root and run:
 
 ```text
 $project-wiki-init
 ```
 
-The alias should run `project-wiki init --dry-run` first unless you explicitly ask it to write. If you are using the helper script directly:
+The alias initializes or updates the repo by default. It is safe to re-run: existing wiki notes are preserved, missing skeleton files are added, and root `AGENTS.md` receives or refreshes only the managed Project LLM Wiki section when there are no conflicts.
+
+If you want to inspect the update before writing, explicitly ask for a dry run or call the helper script directly:
 
 ```bash
 python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init --dry-run
 ```
 
-Review the dry-run output before applying it:
+Review dry-run output with this checklist:
 
 - `Would create paths` shows missing `.llm-wiki/` skeleton files that would be added.
 - `Would skip existing paths` shows existing wiki files that will be preserved.
 - `Root AGENTS.md` shows whether the managed Project LLM Wiki section would be created, appended, updated, or left unchanged.
 - `Managed AGENTS.md section` prints the exact root-agent guidance that would be inserted.
-- `Conflicts` must be empty before applying the update.
+- `Conflicts` must be empty before the update can be applied.
 
-When the dry run looks right, apply the update:
+If you previewed first, apply the update with:
 
 ```bash
 python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init
