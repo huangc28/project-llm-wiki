@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 Phase: 06 (user-friendly-installer-and-installation-docs) — EXECUTING
 Plan: 1 of 1
 Status: Phase complete — ready for verification
-Last activity: 2026-05-15
+Last activity: 2026-05-15 - Completed quick task 260515-ssu: copy-based installer
 
 Progress: [██████████] 100%
 
@@ -123,6 +123,7 @@ None
 | 260513-x0t | Rewrite README to be clearer and easier for users to get started | 2026-05-13 | cc07f38 | [260513-x0t-rewrite-readme-to-be-clearer-and-easier-](./quick/260513-x0t-rewrite-readme-to-be-clearer-and-easier-/) |
 | 260515-m7e | Document upgrade path for existing Project LLM Wiki users in README | 2026-05-15 | a67f6bc | [260515-m7e-document-upgrade-path-for-existing-proje](./quick/260515-m7e-document-upgrade-path-for-existing-proje/) |
 | 260515-od6 | Improve project-wiki-init UX to apply by default | 2026-05-15 | cb7864a | [260515-od6-improve-project-wiki-init-ux-to-apply-by](./quick/260515-od6-improve-project-wiki-init-ux-to-apply-by/) |
+| 260515-ssu | Change installer from symlinks to copied skill directories | 2026-05-15 | 1228801 | [260515-ssu-change-project-llm-wiki-installer-from-s](./quick/260515-ssu-change-project-llm-wiki-installer-from-s/) |
 
 ## Deferred Items
 
