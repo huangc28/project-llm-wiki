@@ -28,6 +28,9 @@ Changed Project LLM Wiki install from symlink-based setup to copied Codex skill 
 - `curl -fsSL file://$PWD/install.sh | CODEX_HOME=$tmp/codex PROJECT_LLM_WIKI_HOME=$tmp/project-llm-wiki bash` - installed copied dirs with markers into temp Codex home.
 - `git diff --check` - clean.
 
-## Notes
+## Post-Push Check
 
-Live GitHub raw curl should be tested after this commit is pushed, because public raw content follows `origin/main`.
+- Pushed through `fa8ab36` to `origin/main`.
+- Live anonymous GitHub raw curl returned `curl: (56) The requested URL returned error: 404`.
+- `gh repo view huangc28/project-llm-wiki --json visibility` reports `PRIVATE`.
+- Public curl installation requires making the repo public or replacing the README command with an authenticated/private install path.
