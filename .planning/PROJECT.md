@@ -17,13 +17,14 @@ Future agents and contributors can recover durable project context from the repo
 - [x] Reusable project wiki skill package with documented project-wiki operations, split references, tests, and a no-dependency helper foundation. Validated in Phase 1.
 - [x] Safe git-root `.llm-wiki/` initialization that creates a git-visible skeleton, preserves existing notes on rerun, seeds README/AGENTS source status, and includes raw source policy templates. Validated in Phase 2.
 - [x] Deterministic `project-wiki lint` behavior for broken wikilinks, missing index entries, stale pages, secret-looking content, oversized raw files, and likely repo/wiki contradictions. Validated in Phase 3.
+- [x] Repo-local query behavior that reads `.llm-wiki/index.md` first, cites wiki pages with wikilinks, and appends query activity to `.llm-wiki/log.md`. Validated in Phase 4.
+- [x] Curated ingest behavior that updates existing wiki pages before creating new pages and stores only curated, de-secreted raw sources. Validated in Phase 4.
+- [x] Merge-safe root `AGENTS.md` integration for `project-wiki init`, including default patching, dry-run preview, `--no-patch-agents`, marker-bounded updates, byte-preserving unrelated sections, and conflict handling. Validated in Phase 5.
+- [x] Dry-run-only validation against `peasydeal_be`, with unchanged target git status, no target `.llm-wiki/`, package test evidence, and a PASS rollout verdict for dry-run-first expansion to `peasydeal_web` and `peasydeal-product-miner`. Validated in Phase 5.
 
 ### Active
 
-- [ ] Provide query behavior that reads `.llm-wiki/index.md` first, cites wiki pages with wikilinks, and appends to `.llm-wiki/log.md`.
-- [ ] Provide ingest behavior that updates existing wiki pages before creating new pages and stores only curated, de-secreted raw sources.
-- [ ] Patch repo `AGENTS.md` merge-safely with Project LLM Wiki rules when requested, without clobbering existing NotebookLM or workflow sections.
-- [ ] Validate the workflow first against a clean test repo and then against `peasydeal_be`.
+No active v1 requirements remain after Phase 5 completion.
 
 ### Out of Scope
 
@@ -58,9 +59,9 @@ The first skill set should likely include:
 
 ## Current State
 
-Phase 3 is complete as of 2026-05-13. The package now exposes `project-wiki init` and `project-wiki lint`; lint resolves the current Git root, scans readable `.llm-wiki/` files without mutating them, reports structural errors plus safety/freshness/drift warnings, supports deterministic text and JSON output, and passes the Phase 3 unittest suite.
+Phase 5 is complete as of 2026-05-15. The package now exposes the v1 repo-local wiki loop: git-root initialization, lint safety checks, query support packets and logs, curated ingest, and default root `AGENTS.md` integration for future agents.
 
-Next phase: implement the query and ingest loop so repo-local answers cite wiki pages and curated sources compound into existing `.llm-wiki/` pages first.
+The Phase 5 rollout verdict is PASS. `project-wiki init --dry-run` was validated from `/Users/huangchihan/develop/bbj/peasydeal/peasydeal_be` without changing that target repo, and next PeasyDeal repos should start with the same dry-run-first procedure from each target git root.
 
 ## Constraints
 
@@ -80,8 +81,10 @@ Next phase: implement the query and ingest loop so repo-local answers cite wiki 
 | Keep `.llm-wiki/` git-tracked by default | Durable project knowledge should travel with the repo and be reviewable in diffs | Validated in Phase 2 |
 | Keep active task state out of `.llm-wiki/` | Task state changes quickly and belongs in GSD, Linear, OMX, or workflow files | Validated in Phase 2 |
 | Keep lint warning-only for safety, freshness, and drift signals | Agents should see unsafe or stale wiki content before rollout without blocking commits on heuristic warnings | Validated in Phase 3 |
-| Start with one real repo after a clean test repo | Limits rollout risk before applying the pattern across the PeasyDeal workspace | Pending |
-| Treat repo code as source of truth over wiki notes | Prevents stale compiled knowledge from becoming authoritative | Pending |
+| Start with one real repo after a clean test repo | Limits rollout risk before applying the pattern across the PeasyDeal workspace | Validated in Phase 5 with dry-run-only `peasydeal_be` evidence |
+| Treat repo code as source of truth over wiki notes | Prevents stale compiled knowledge from becoming authoritative | Validated in Phase 5 root `AGENTS.md` guidance |
+| Patch root `AGENTS.md` by default during init with marker-bounded, byte-preserving updates | Agents reliably discover `.llm-wiki/` context without users remembering an extra option, while unrelated instructions remain authoritative | Validated in Phase 5 |
+| Apply the next PeasyDeal repos with dry-run-first rollout rules | Prevents parent-workspace writes and makes target repo status evidence auditable before non-dry-run use | Validated in Phase 5 rollout report |
 | Keep Obsidian and NotebookLM as adjacent layers | Obsidian handles cross-project synthesis; NotebookLM can support retrieval, but neither replaces repo-local truth | Pending |
 
 ## Evolution
@@ -102,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-13 after Phase 3 completion*
+*Last updated: 2026-05-15 after Phase 5 completion*
