@@ -1,14 +1,38 @@
 # Project LLM Wiki
 
-Project LLM Wiki adds a small, git-tracked `.llm-wiki/` knowledge layer to an existing repository.
+Agents and contributors lose project context between sessions. Repos accumulate decisions, runbooks, and architectural notes that live only in chat history, PR comments, or someone's head — so the next agent re-derives them from scratch and the next contributor asks the same questions.
 
-Use it when you want future agents and contributors to recover durable project context from the repo itself: architecture notes, decisions, domain concepts, runbooks, feature summaries, and validated implementation learnings.
+Project LLM Wiki adds a small, git-tracked `.llm-wiki/` knowledge layer to an existing repository, so durable project context lives next to the code that depends on it.
 
-Keep active task state somewhere else: `.planning/`, Linear, PRs, debug notes, workflow files, or chat history.
+Use it for: architecture notes, decisions, domain concepts, runbooks, feature summaries, validated implementation learnings.
+Keep elsewhere: active task state (`.planning/`, Linear, debug notes, workflow files, PR threads).
+
+## Status
+
+This is the reusable Phase 1 skill package. It targets Codex via `AGENTS.md` patching. There is no installer yet — the Install section below uses manual symlinks, and the helper script is location-agnostic so you can also run it from a clone. Claude Code and other runtimes are out of scope for this phase.
+
+## Install
+
+Two paths, both supported:
+
+```bash
+# Option A — install as Codex skills (recommended for daily use).
+# Run from the project-llm-wiki repo root:
+ln -s "$(pwd)/skills/project-llm-wiki"    ~/.codex/skills/
+ln -s "$(pwd)/skills/project-wiki-init"   ~/.codex/skills/
+ln -s "$(pwd)/skills/project-wiki-lint"   ~/.codex/skills/
+ln -s "$(pwd)/skills/project-wiki-query"  ~/.codex/skills/
+ln -s "$(pwd)/skills/project-wiki-ingest" ~/.codex/skills/
+
+# Option B — run the helper script directly from the clone (no install required):
+python3 ./skills/project-llm-wiki/scripts/project_wiki.py --help
+```
+
+The helper script discovers its template assets relative to its own location, so both paths work without configuration.
 
 ## Quick Start
 
-This repo provides the reusable skill package. If it is symlinked into `~/.codex/skills`, open a new Codex session in any target repo and use:
+`$skill-name` invokes a Codex skill in the current session. After installing the aliases (Option A above), open a new Codex session in any target repo and use:
 
 ```text
 $project-wiki-init
@@ -23,77 +47,97 @@ The alias skills are thin wrappers around the main skill at:
 skills/project-llm-wiki/SKILL.md
 ```
 
-## Updating Existing Repos
+## What `init` Produces
 
-If a project already uses an older Project LLM Wiki setup, use the same init flow as a safe update path.
-
-First update or reinstall this skill package so the target project is using the new helper and skill files. Then open Codex in the target project's actual Git root and run:
+Running `$project-wiki-init` (or the CLI equivalent) in a target repo creates:
 
 ```text
-$project-wiki-init
+.llm-wiki/
+├── README.md           # human-facing overview
+├── AGENTS.md           # wiki-level guidance for agents
+├── index.md            # entry point — read this first
+├── log.md              # validated-learning log
+├── architecture/       # .gitkeep, populated on demand
+├── decisions/          # .gitkeep, populated on demand
+├── domain/             # .gitkeep, populated on demand
+├── operations/         # .gitkeep, populated on demand
+├── features/ideas.md
+├── summaries/repo-overview.md
+└── raw/
+    ├── README.md
+    └── curated/README.md
 ```
 
-The alias initializes or updates the repo by default. It is safe to re-run: existing wiki notes are preserved, missing skeleton files are added, and root `AGENTS.md` receives or refreshes only the managed Project LLM Wiki section when there are no conflicts.
+`.llm-wiki/index.md` is the canonical entry point, with headings for Architecture, Domain, Decisions, Operations, Features, Summaries, and Raw Sources.
 
-If you want to inspect the update before writing, explicitly ask for a dry run or call the helper script directly:
+Init also patches the target repo's root `AGENTS.md` with a managed section between these markers:
+
+```text
+<!-- PROJECT-LLM-WIKI:START -->
+## Project LLM Wiki
+...
+<!-- PROJECT-LLM-WIKI:END -->
+```
+
+Content outside those markers is preserved byte-for-byte. Re-running init updates the section in place without duplicating it.
+
+## Updating Existing Repos
+
+If a project already uses an older Project LLM Wiki setup, re-run the same init flow. First update or reinstall this skill package (re-run the symlink commands or `git pull` in the clone), then run `$project-wiki-init` in the target repo's git root.
+
+The alias initializes or updates the repo by default. Re-running is idempotent: existing `.llm-wiki/` notes are preserved, missing skeleton files are added, and root `AGENTS.md` is patched in place when there are no conflicts.
+
+If you want to inspect the update before writing, pass `--dry-run`:
 
 ```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init --dry-run
+python3 ./skills/project-llm-wiki/scripts/project_wiki.py init --dry-run
 ```
 
-Review dry-run output with this checklist:
+The dry-run prints: paths that would be created, paths that would be skipped (existing), the action taken on root `AGENTS.md`, the exact managed section content, and any conflicts. Conflicts must be empty before applying. See `skills/project-llm-wiki/references/command-surface.md` for the full output structure.
 
-- `Would create paths` shows missing `.llm-wiki/` skeleton files that would be added.
-- `Would skip existing paths` shows existing wiki files that will be preserved.
-- `Root AGENTS.md` shows whether the managed Project LLM Wiki section would be created, appended, updated, or left unchanged.
-- `Managed AGENTS.md section` prints the exact root-agent guidance that would be inserted.
-- `Conflicts` must be empty before the update can be applied.
-
-If you previewed first, apply the update with:
-
-```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init
-```
-
-Re-running init is idempotent for existing wiki files: it fills in missing skeleton files but does not overwrite existing `.llm-wiki/` notes. Root `AGENTS.md` is patched by default when safe; existing Project LLM Wiki markers are updated in place, and content outside those markers is preserved byte-for-byte. Use `--no-patch-agents` only when you intentionally want to update `.llm-wiki/` without touching root `AGENTS.md`.
+Use `--no-patch-agents` to update `.llm-wiki/` without touching root `AGENTS.md`.
 
 ## CLI Fallback
 
-You can also call the helper script directly from any existing Git repo.
-
-Preview initialization:
+The helper script works from any path. Set `SKILL` once:
 
 ```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init --dry-run
+SKILL=~/.codex/skills/project-llm-wiki   # if you symlinked
+# or
+SKILL=./skills/project-llm-wiki          # if running from the clone
 ```
 
-Create `.llm-wiki/` in the current repo's actual Git root:
+Then:
 
 ```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py init
-```
+# Preview initialization
+python3 $SKILL/scripts/project_wiki.py init --dry-run
 
-Lint the wiki:
+# Create .llm-wiki/ in the current repo's git root
+python3 $SKILL/scripts/project_wiki.py init
 
-```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py lint
-```
+# Lint the wiki (add --json for machine-readable output)
+python3 $SKILL/scripts/project_wiki.py lint
 
-Prepare a query support packet:
+# Prepare an index-first query support packet
+python3 $SKILL/scripts/project_wiki.py query "What does the wiki know about onboarding?"
 
-```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py query "What does the wiki know about onboarding?"
-```
-
-Ingest a curated note into an existing page:
-
-```bash
-python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py ingest \
+# Ingest a curated note into an existing page
+python3 $SKILL/scripts/project_wiki.py ingest \
   --text "Auth uses JWT access tokens and refresh rotation." \
   --title "Auth implementation note" \
   --target-page architecture/auth \
   --key-idea "Auth uses JWT access tokens and refresh rotation."
 ```
+
+Key flags worth knowing:
+
+- `init`: `--dry-run`, `--no-patch-agents`
+- `lint`: `--json`
+- `query`: `--consulted PAGE`, `--key-insight TEXT`, `--not-covered`, `--json`
+- `ingest`: `--text` / `--file` / `--url`, `--title`, `--target-page`, `--new-page` (with `--new-page-title`, `--new-page-reason`), `--key-idea`, `--preserve-raw`, `--summary-page`, `--json`
+
+Full command surface and flag semantics: `skills/project-llm-wiki/references/command-surface.md`.
 
 ## Modes
 
@@ -103,6 +147,10 @@ python3 ~/.codex/skills/project-llm-wiki/scripts/project_wiki.py ingest \
 | `project-wiki-lint` | Check wiki structure, broken links, stale notes, unsafe raw material, and repo/wiki drift. |
 | `project-wiki-query` | Read `.llm-wiki/index.md` first and answer with repo-local `[[wikilink]]` citations. |
 | `project-wiki-ingest` | Add curated source notes to existing pages first; create new pages only with a reason. |
+
+## Why not `.planning/` or NotebookLM?
+
+`.planning/` tracks active workflow state — volatile, agent-mutable, not durable. NotebookLM can answer questions but its content isn't reviewable in PR diffs and doesn't travel with the repo. `.llm-wiki/` is git-tracked, curated, and lives next to the code it describes — so changes are diffable, reviewable, and recoverable from `git log`.
 
 ## Safety Rules
 
