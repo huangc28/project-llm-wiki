@@ -113,6 +113,7 @@ None
 |---|-------------|------|--------|-----------|
 | 260513-q3w | Expose project-wiki mode aliases as Codex dollar-trigger skills | 2026-05-13 | 849d58d | [260513-q3w-expose-project-wiki-mode-aliases-as-code](./quick/260513-q3w-expose-project-wiki-mode-aliases-as-code/) |
 | 260513-x0t | Rewrite README to be clearer and easier for users to get started | 2026-05-13 | cc07f38 | [260513-x0t-rewrite-readme-to-be-clearer-and-easier-](./quick/260513-x0t-rewrite-readme-to-be-clearer-and-easier-/) |
+| 260515-m7e | Document upgrade path for existing Project LLM Wiki users in README | 2026-05-15 | a67f6bc | [260515-m7e-document-upgrade-path-for-existing-proje](./quick/260515-m7e-document-upgrade-path-for-existing-proje/) |
 
 ## Deferred Items
 
