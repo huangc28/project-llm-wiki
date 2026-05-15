@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: completed
 stopped_at: Phase 05 complete
-last_updated: "2026-05-15T07:43:33.390Z"
+last_updated: "2026-05-15T09:36:42Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 5
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 Phase: 05 (agent-instructions-and-real-repo-validation) — COMPLETE
 Plan: 3 of 3
 Status: Phase complete
-Last activity: 2026-05-15
+Last activity: 2026-05-15 - Completed quick task 260515-od6: Improve project-wiki-init UX to apply by default
 
 Progress: [██████████] 100%
 
@@ -114,6 +114,7 @@ None
 | 260513-q3w | Expose project-wiki mode aliases as Codex dollar-trigger skills | 2026-05-13 | 849d58d | [260513-q3w-expose-project-wiki-mode-aliases-as-code](./quick/260513-q3w-expose-project-wiki-mode-aliases-as-code/) |
 | 260513-x0t | Rewrite README to be clearer and easier for users to get started | 2026-05-13 | cc07f38 | [260513-x0t-rewrite-readme-to-be-clearer-and-easier-](./quick/260513-x0t-rewrite-readme-to-be-clearer-and-easier-/) |
 | 260515-m7e | Document upgrade path for existing Project LLM Wiki users in README | 2026-05-15 | a67f6bc | [260515-m7e-document-upgrade-path-for-existing-proje](./quick/260515-m7e-document-upgrade-path-for-existing-proje/) |
+| 260515-od6 | Improve project-wiki-init UX to apply by default | 2026-05-15 | cb7864a | [260515-od6-improve-project-wiki-init-ux-to-apply-by](./quick/260515-od6-improve-project-wiki-init-ux-to-apply-by/) |
 
 ## Deferred Items
 
