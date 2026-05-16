@@ -113,7 +113,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Public anonymous curl install is blocked while `huangc28/project-llm-wiki` remains private; GitHub raw returns 404 for `install.sh`.
+None
 
 ### Quick Tasks Completed
 

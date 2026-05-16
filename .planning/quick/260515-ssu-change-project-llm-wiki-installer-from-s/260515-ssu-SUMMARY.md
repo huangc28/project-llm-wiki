@@ -31,6 +31,6 @@ Changed Project LLM Wiki install from symlink-based setup to copied Codex skill 
 ## Post-Push Check
 
 - Pushed through `fa8ab36` to `origin/main`.
-- Live anonymous GitHub raw curl returned `curl: (56) The requested URL returned error: 404`.
-- `gh repo view huangc28/project-llm-wiki --json visibility` reports `PRIVATE`.
-- Public curl installation requires making the repo public or replacing the README command with an authenticated/private install path.
+- Initial live anonymous GitHub raw curl returned `curl: (56) The requested URL returned error: 404` while the repository was private.
+- After the repository was made public, the live public curl smoke passed: `public-curl-copy-install-ok`.
+- The public installer cloned from GitHub, copied five marker-owned skill directories into a temporary `CODEX_HOME`, and left no temporary clone behind.
