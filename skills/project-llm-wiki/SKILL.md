@@ -40,6 +40,10 @@ Root `AGENTS.md` guidance states simple typo fixes and narrow single-file edits 
 
 Root `AGENTS.md` guidance uses index-first, relevant-pages-only lookup rather than default full scans of `.llm-wiki/`.
 
+Root `AGENTS.md` guidance treats GitNexus MCP, when available, as navigation support for architecture, module boundaries, call chains, and impact scope rather than as source of truth.
+
+Root `AGENTS.md` guidance requires proposal-first knowledge updates: after validated non-trivial work, agents propose 0-3 durable learnings with category, target page, learning, evidence, validation, and decay condition; `.llm-wiki/` updates happen only after human approval.
+
 `project-wiki-lint` checks wiki structure, safety, freshness, and repo/wiki drift. Full behavior is implemented in Phase 3.
 
 `project-wiki-query` answers from `.llm-wiki/index.md` and related pages with repo-local wikilink citations.

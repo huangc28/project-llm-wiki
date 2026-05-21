@@ -18,9 +18,15 @@ Before non-trivial architecture, debugging, product, onboarding, or cross-file i
 
 For simple typo fixes and narrow single-file edits, wiki lookup is not required.
 
-Current repository files are authoritative when they disagree with `.llm-wiki/`; report wiki drift when found.
+When architecture, module boundaries, call chains, or impact scope are unclear, use GitNexus MCP if available. Treat it as navigation support, not source of truth.
 
-Update `.llm-wiki/` only after validated non-trivial work produces durable learning. Do not use `.llm-wiki/` for active task status.
+Current repository files and tests are authoritative when they disagree with `.llm-wiki/` or graph-tool output.
+
+After validated non-trivial work, propose 0-3 durable learnings for human review before updating `.llm-wiki/`.
+
+Each proposal should include: category, target page, learning, evidence, validation, and decay condition.
+
+Update `.llm-wiki/` only after approval. Do not store active task state, debug transcripts, full logs, secrets, or speculative notes there.
 <!-- PROJECT-LLM-WIKI:END -->
 """
 

@@ -54,6 +54,10 @@ Initialize `.llm-wiki/` while intentionally skipping root `AGENTS.md` patching:
 
 By default, init patches root AGENTS.md with a short Project LLM Wiki managed section when safe.
 
+The managed section tells agents to use GitNexus MCP as optional navigation support for unclear architecture, module boundaries, call chains, or impact scope; source files and tests remain authoritative.
+
+The managed section also makes knowledge updates proposal-first: after validated non-trivial work, agents propose 0-3 durable learnings with category, target page, learning, evidence, validation, and decay condition, then update `.llm-wiki/` only after human approval.
+
 --dry-run reports both .llm-wiki skeleton effects and root AGENTS.md effects, including the exact managed section.
 
 --no-patch-agents skips root AGENTS.md patching.

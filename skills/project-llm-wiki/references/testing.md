@@ -120,9 +120,13 @@ The init/AGENTS validation suite covers:
   non-trivial architecture, debugging, product, onboarding, or cross-file
   implementation work.
 - AGENT-04: inserted rules state that current repository files are authoritative
-  when they disagree with `.llm-wiki/`.
-- AGENT-05: inserted rules tell agents to update `.llm-wiki/` only after
-  validated non-trivial durable learning and never use it for task status.
+  when they disagree with `.llm-wiki/` or graph-tool output.
+- AGENT-05: inserted rules treat GitNexus MCP as optional navigation support,
+  not source of truth.
+- AGENT-06: inserted rules require agents to propose 0-3 durable learnings
+  for human review before updating `.llm-wiki/`.
+- AGENT-07: inserted rules require each proposal to include category, target
+  page, learning, evidence, validation, and decay condition.
 - TEST-06: preservation fixtures cover a root `AGENTS.md` with existing
   NotebookLM and workflow sections.
 - TEST-07: `/Users/huangchihan/develop/bbj/peasydeal/peasydeal_be` is validated
