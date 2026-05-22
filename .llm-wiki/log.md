@@ -23,3 +23,7 @@ Active task state belongs outside `.llm-wiki/` in planning tools, issue trackers
 ## [2026-05-19] ingest | Knowledge boundary discussion
 - Pages touched: [[architecture/knowledge-layers]]
 - Key insight: Boundary rule: .planning/ keeps workflow evidence and short-lived progress, while .llm-wiki keeps curated durable project knowledge; repository files win over stale wiki notes.
+
+## [2026-05-21] ingest | Knowledge sedimentation daily workflow
+- Pages touched: [[architecture/knowledge-layers]]
+- Key insight: Daily workflow: project-wiki-init writes the AGENTS.md contract; agents automatically read wiki context before non-trivial work and propose 0-3 validated learning candidates afterward, but update .llm-wiki only after human approval.
