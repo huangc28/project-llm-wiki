@@ -18,13 +18,13 @@ Recognized trigger phrases:
 
 ## Protocol
 
+Shared wiki invariants — index-first lookup, `[[wikilink]]` citation, thicken-before-create, `Updated from <title> YYYY-MM-DD` provenance, contradiction flagging, an append-only `log.md`, and the blast-radius hard cap of 15 touched pages — are defined once in `references/wiki-conventions.md` and apply to every mode below.
+
 Read the target repository's git root before writing .llm-wiki/.
 
 Keep durable, validated project knowledge in `.llm-wiki/`. Do not store active task state in .llm-wiki/.
 
 Trust current repo code over .llm-wiki/ when they disagree.
-
-Use `.llm-wiki/index.md` as the entry point for non-trivial wiki lookups, then read only task-relevant linked pages.
 
 ## Modes
 
@@ -48,32 +48,24 @@ Root `AGENTS.md` guidance requires proposal-first knowledge updates: after valid
 
 `project-wiki-query` answers from `.llm-wiki/index.md` and related pages with repo-local wikilink citations.
 
-Query protocol:
+Query protocol (shared invariants in `references/wiki-conventions.md`):
 
 1. Resolve the target repository's Git root.
-2. Read .llm-wiki/index.md first.
-3. Inspect the relevant linked wiki pages before answering.
-4. Direct claims require `[[wikilink]]` citations to repo-local wiki pages.
-5. Put synthesis or cross-page reasoning under an `Inference` section.
-6. If `.llm-wiki/` does not currently cover the topic, say that clearly, list pages consulted, and suggest the source type to ingest next.
-7. Append a concise query entry to `.llm-wiki/log.md` with date, query summary, pages consulted, and key insight or not-covered result.
-
-Do not store full transcripts, complete question/answer chat history, or unvalidated task notes in `.llm-wiki/log.md`.
+2. Read `.llm-wiki/index.md`, then inspect the relevant linked pages before answering.
+3. Put synthesis or cross-page reasoning under a labeled `Inference` section.
+4. If `.llm-wiki/` does not currently cover the topic, say that clearly, list pages consulted, and suggest the source type to ingest next.
+5. Append a dated query entry to `.llm-wiki/log.md`: query summary, pages consulted, and key insight or not-covered result.
 
 `project-wiki-ingest` updates durable wiki pages from curated, de-secreted project sources.
 
-Ingest protocol:
+Ingest protocol (shared invariants — thicken-before-create, provenance, contradiction flagging, append-only `log.md`, blast-radius cap of 15 — in `references/wiki-conventions.md`):
 
 1. Accept curated text, curated file content, or URL provenance paired with curated text.
 2. Video sources require transcript, summary, or curated notes before core ingest.
 3. `$watch-video` can be a user-local preprocessor, but Project LLM Wiki core ingest must not depend on it.
-4. Ingest updates existing pages before creating new pages.
-5. Create a new page only with an explicit reason that no existing page covers the concept or the concept deserves a durable cross-page home.
-6. Every touched page gets concise provenance such as `Updated from <title> YYYY-MM-DD`.
-7. `index.md` is updated only for newly created pages.
-8. `log.md` records pages touched and key ideas.
+4. `index.md` is updated only for newly created pages.
 
-Raw curated storage is optional and policy-gated with `--preserve-raw`. Never store full transcripts, full logs, dumps, secrets, private data, active task state, execution checkpoints, or large unreviewed raw material. The page hard cap is 15 touched pages.
+Raw curated storage is optional and policy-gated with `--preserve-raw`. Never store full transcripts, full logs, dumps, secrets, private data, active task state, execution checkpoints, or large unreviewed raw material.
 
 ## Safety Boundaries
 
@@ -81,7 +73,7 @@ Do not initialize `.llm-wiki/` in a multi-repo parent directory unless the paren
 
 Do not store secrets, credentials, private customer data, auth tokens, full logs, database exports, generated dumps, or unvalidated task notes in `.llm-wiki/`.
 
-For ingest, Never store full transcripts, full logs, dumps, secrets, private data, active task state, or execution checkpoints. The blast-radius hard cap is 15 touched pages.
+For ingest, never store full transcripts, full logs, dumps, secrets, private data, active task state, or execution checkpoints. The blast-radius cap is defined in `references/wiki-conventions.md`.
 
 Do not install or modify global skill directories during Phase 1.
 
@@ -91,5 +83,6 @@ Run `python3 -m unittest discover -s skills/project-llm-wiki/tests` after packag
 
 ## Related
 
+- `references/wiki-conventions.md`
 - `references/command-surface.md`
 - `references/package-contract.md`
