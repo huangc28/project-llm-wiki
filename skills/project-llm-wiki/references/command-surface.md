@@ -96,6 +96,26 @@ Every finding contains the fixed fields `severity`, `code`, `path`, `message`, a
 
 Clean runs print `No issues found in .llm-wiki/` for text output and `{"findings": []}` for JSON output.
 
+### Vault profile (init + lint)
+
+Both `project-wiki init` and `project-wiki lint` accept `--profile vault --root PATH` to target an Obsidian vault instead of a repo-local `.llm-wiki/`. The default is `--profile project`, the behavior documented above. Vault defaults are baked into the helper (no config file): `index.md` and `log.md` at the vault root; content directories `projects`, `daily_notes`, `raw`, `Ideas`, and `skills`; excluded directories `.obsidian` and `.git`; stale-page horizon 30 days.
+
+Build the vault skeleton idempotently in the vault root:
+
+`project-wiki init --profile vault --root PATH`
+
+Preview vault init effects without writing:
+
+`project-wiki init --profile vault --root PATH --dry-run`
+
+Lint a vault for structural findings (broken wikilinks, missing index entries, oversized raw files, stale pages, secret-looking content):
+
+`project-wiki lint --profile vault --root PATH`
+
+`project-wiki lint --profile vault --root PATH --json`
+
+The vault profile covers only deterministic mechanics; semantic and LLM layers stay in skill prose. Because a vault is not a Git repository, the vault profile writes only inside the explicit `--root` (never a resolved Git root). Clean vault lint runs print `No issues found in the vault.` for text output and `{"findings": []}` for JSON output.
+
 ### project-wiki-query
 
 Implemented support mode for reading `.llm-wiki/index.md` first, preparing candidate repo-local wiki pages, and appending bounded query history to `.llm-wiki/log.md`.

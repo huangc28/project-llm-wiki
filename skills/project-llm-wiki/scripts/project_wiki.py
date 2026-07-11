@@ -154,6 +154,25 @@ DISALLOWED_RAW_PHRASES = (
 )
 VIDEO_URL_MARKERS = ("youtube.com", "youtu.be", "vimeo.com")
 
+# --- Vault profile defaults (baked in; no config file) ---
+VAULT_CONTENT_DIRS = ("projects", "daily_notes", "raw", "Ideas", "skills")
+VAULT_EXCLUDE_DIRS = frozenset({".obsidian", ".git"})
+VAULT_INDEX_COVERAGE_DIRS = ("projects", "Ideas", "skills")
+VAULT_INDEX_FILENAME = "index.md"
+VAULT_STALE_AFTER_DAYS = 30
+VAULT_CONTROL_FILE_CONTENTS = {
+    "index.md": (
+        "# Vault Index\n\n"
+        "Entry point for vault wiki lookups. Read this first, then open only the\n"
+        "task-relevant linked pages. List durable pages here so they stay discoverable.\n"
+    ),
+    "log.md": (
+        "# Vault Log\n\n"
+        "Append-only. Add new entries under dated headings; never rewrite, reorder,\n"
+        "or summarize existing entries.\n"
+    ),
+}
+
 
 def planned_command(name: str, phase: str) -> int:
     print(f"{name} is planned for {phase}")
@@ -702,9 +721,12 @@ def check_index_coverage(
 
 
 def check_raw_file_sizes(
-    git_root: pathlib.Path, wiki_files: list[pathlib.Path]
+    git_root: pathlib.Path,
+    wiki_files: list[pathlib.Path],
+    wiki_root: pathlib.Path | None = None,
 ) -> list[dict[str, str]]:
-    wiki_root = git_root / WIKI_ROOT
+    if wiki_root is None:
+        wiki_root = git_root / WIKI_ROOT
     findings: list[dict[str, str]] = []
     for wiki_file in wiki_files:
         wiki_relative_path = wiki_file.relative_to(wiki_root)
@@ -796,7 +818,9 @@ def parse_updated_frontmatter(markdown_text: str) -> datetime.date | None:
 
 
 def check_stale_pages(
-    git_root: pathlib.Path, markdown_files: list[pathlib.Path]
+    git_root: pathlib.Path,
+    markdown_files: list[pathlib.Path],
+    stale_after_days: int = STALE_AFTER_DAYS,
 ) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     today = datetime.date.today()
@@ -809,14 +833,14 @@ def check_stale_pages(
         updated = parse_updated_frontmatter(markdown_text)
         if updated is None:
             continue
-        if today - updated <= datetime.timedelta(days=STALE_AFTER_DAYS):
+        if today - updated <= datetime.timedelta(days=stale_after_days):
             continue
         findings.append(
             make_finding(
                 "warning",
                 "stale_page",
                 relative_path,
-                f"Wiki page updated date {updated.isoformat()} is older than {STALE_AFTER_DAYS} days.",
+                f"Wiki page updated date {updated.isoformat()} is older than {stale_after_days} days.",
                 "review the page against current repo files and update updated: only after validation.",
             )
         )
@@ -1201,10 +1225,13 @@ def sort_findings(findings: list[dict[str, str]]) -> list[dict[str, str]]:
     )
 
 
-def render_text_findings(findings: list[dict[str, str]]) -> None:
+def render_text_findings(
+    findings: list[dict[str, str]],
+    clean_message: str = "No issues found in .llm-wiki/",
+) -> None:
     sorted_findings = sort_findings(findings)
     if not sorted_findings:
-        print("No issues found in .llm-wiki/")
+        print(clean_message)
         return
 
     for index, finding in enumerate(sorted_findings):
@@ -1219,11 +1246,15 @@ def render_json_findings(findings: list[dict[str, str]]) -> None:
     print(json.dumps({"findings": sorted_findings}, indent=2, sort_keys=True))
 
 
-def render_findings(findings: list[dict[str, str]], as_json: bool) -> None:
+def render_findings(
+    findings: list[dict[str, str]],
+    as_json: bool,
+    clean_message: str = "No issues found in .llm-wiki/",
+) -> None:
     if as_json:
         render_json_findings(findings)
     else:
-        render_text_findings(findings)
+        render_text_findings(findings, clean_message)
 
 
 def lint_exit_code(findings: list[dict[str, str]]) -> int:
@@ -1231,6 +1262,8 @@ def lint_exit_code(findings: list[dict[str, str]]) -> int:
 
 
 def run_lint(args) -> int:
+    if getattr(args, "profile", "project") == "vault":
+        return run_vault_lint(args)
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
     if git_root is None:
@@ -1894,6 +1927,8 @@ def run_install(args) -> int:
 
 
 def run_init(args) -> int:
+    if getattr(args, "profile", "project") == "vault":
+        return run_vault_init(args)
     cwd = pathlib.Path.cwd()
     git_root, _message = resolve_git_root(cwd)
     if git_root is None:
@@ -1963,6 +1998,228 @@ def run_init(args) -> int:
     return 0
 
 
+# --- Vault profile: deterministic init + lint mechanics ---
+
+
+def resolve_vault_root(args) -> tuple[pathlib.Path | None, str | None]:
+    raw_root = getattr(args, "root", None)
+    if not raw_root:
+        return None, "The vault profile requires --root <path>."
+    root = pathlib.Path(raw_root).expanduser()
+    if not root.exists():
+        return None, f"Vault root does not exist: {root}"
+    if not root.is_dir():
+        return None, f"Vault root is not a directory: {root}"
+    return root.resolve(), None
+
+
+def collect_vault_init_paths(
+    vault_root: pathlib.Path,
+) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
+    create: list[pathlib.Path] = []
+    skip: list[pathlib.Path] = []
+    for name in (*VAULT_CONTENT_DIRS, *VAULT_CONTROL_FILE_CONTENTS):
+        relative = pathlib.Path(name)
+        if (vault_root / relative).exists():
+            skip.append(relative)
+        else:
+            create.append(relative)
+    return create, skip
+
+
+def run_vault_init(args) -> int:
+    vault_root, error = resolve_vault_root(args)
+    if vault_root is None:
+        print(error)
+        return 2
+
+    print(f"Resolved vault root: {vault_root}")
+    would_create, would_skip = collect_vault_init_paths(vault_root)
+
+    if args.dry_run:
+        print_path_section("Would create paths:", would_create)
+        print_path_section("Would skip existing paths:", would_skip)
+        print("Next: review the vault index.md")
+        return 0
+
+    created: list[pathlib.Path] = []
+    skipped: list[pathlib.Path] = []
+    for name in VAULT_CONTENT_DIRS:
+        relative = pathlib.Path(name)
+        path = vault_root / relative
+        if path.exists():
+            skipped.append(relative)
+        else:
+            path.mkdir(parents=True, exist_ok=True)
+            created.append(relative)
+    for name, content in VAULT_CONTROL_FILE_CONTENTS.items():
+        relative = pathlib.Path(name)
+        if create_file_if_missing(vault_root / relative, content):
+            created.append(relative)
+        else:
+            skipped.append(relative)
+
+    print_path_section("Created paths:", created)
+    print_path_section("Skipped existing paths:", skipped)
+    print("Next: review the vault index.md")
+    return 0
+
+
+def collect_vault_files(
+    vault_root: pathlib.Path,
+) -> tuple[list[pathlib.Path], list[dict[str, str]]]:
+    files: list[pathlib.Path] = []
+    findings: list[dict[str, str]] = []
+    pending = [vault_root]
+
+    while pending:
+        current = pending.pop()
+        try:
+            entries = sorted(current.iterdir(), key=lambda path: path.as_posix())
+        except OSError:
+            findings.append(
+                make_finding(
+                    "error",
+                    "unreadable_wiki_directory",
+                    repo_relative_path(current, vault_root),
+                    "Vault directory could not be listed during lint.",
+                    "Fix directory permissions or remove the unreadable directory before running project-wiki lint.",
+                )
+            )
+            continue
+        for entry in entries:
+            if entry.is_symlink() or not path_is_under(entry, vault_root):
+                continue
+            if entry.is_dir():
+                if entry.name in VAULT_EXCLUDE_DIRS or entry.name.startswith("."):
+                    continue
+                pending.append(entry)
+            elif entry.is_file():
+                files.append(entry)
+
+    return sorted(files, key=lambda path: path.relative_to(vault_root).as_posix()), findings
+
+
+def check_vault_broken_wikilinks(
+    vault_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    for markdown_file in markdown_files:
+        relative_path = repo_relative_path(markdown_file, vault_root)
+        markdown_text, read_error = read_wiki_text(markdown_file, vault_root)
+        if read_error is not None:
+            findings.append(read_error)
+            continue
+        assert markdown_text is not None
+        for raw_target in extract_wikilinks(markdown_text):
+            normalized_target = normalize_wikilink_target(raw_target)
+            target_path = vault_root / pathlib.Path(normalized_target)
+            # Reuse the shared wikilink rule; add the vault-root containment check.
+            valid_target = wikilink_target_error(
+                raw_target, normalized_target
+            ) is None and path_is_under(target_path, vault_root)
+            if valid_target and target_path.is_file() and not target_path.is_symlink():
+                continue
+            if valid_target:
+                page = pathlib.PurePosixPath(normalized_target).as_posix()
+                message = f"Wikilink [[{raw_target}]] points to missing page {page}."
+                remediation = (
+                    f"Create {page} or update the wikilink in {relative_path}."
+                )
+            else:
+                message = (
+                    f"Wikilink [[{raw_target}]] is invalid or escapes the vault root."
+                )
+                remediation = (
+                    "Use a vault-root-relative target, for example [[projects/my-page]]."
+                )
+            findings.append(
+                make_finding(
+                    "error", "broken_wikilink", relative_path, message, remediation
+                )
+            )
+    return findings
+
+
+def is_vault_index_candidate(vault_relative: pathlib.Path) -> bool:
+    if vault_relative.name == ".gitkeep":
+        return False
+    parts = vault_relative.parts
+    return len(parts) > 1 and parts[0] in VAULT_INDEX_COVERAGE_DIRS
+
+
+def check_vault_index_coverage(
+    vault_root: pathlib.Path, markdown_files: list[pathlib.Path]
+) -> list[dict[str, str]]:
+    index_path = vault_root / VAULT_INDEX_FILENAME
+    if not index_path.is_file():
+        return []
+    index_text, read_error = read_wiki_text(index_path, vault_root)
+    if read_error is not None:
+        return [read_error]
+    assert index_text is not None
+
+    linked_pages: set[str] = set()
+    for raw_target in extract_wikilinks(index_text):
+        normalized_target = normalize_wikilink_target(raw_target)
+        if normalized_target:
+            linked_pages.add(normalized_target)
+
+    findings: list[dict[str, str]] = []
+    for markdown_file in markdown_files:
+        try:
+            vault_relative = markdown_file.relative_to(vault_root)
+        except ValueError:
+            continue
+        if not is_vault_index_candidate(vault_relative):
+            continue
+        if vault_relative.as_posix() in linked_pages:
+            continue
+        link = f"[[{vault_relative.with_suffix('').as_posix()}]]"
+        findings.append(
+            make_finding(
+                "warning",
+                "missing_index_entry",
+                repo_relative_path(markdown_file, vault_root),
+                "Durable vault page is not linked from index.md.",
+                f"Add {link} to index.md when this page is durable vault knowledge.",
+            )
+        )
+    return findings
+
+
+def run_vault_lint(args) -> int:
+    vault_root, error = resolve_vault_root(args)
+    if vault_root is None:
+        print(error)
+        return 2
+
+    vault_files, inventory_findings = collect_vault_files(vault_root)
+    readable_files: list[pathlib.Path] = []
+    read_error_findings: list[dict[str, str]] = []
+    for vault_file in vault_files:
+        _text, read_error = read_wiki_text(vault_file, vault_root)
+        if read_error is not None:
+            read_error_findings.append(read_error)
+        else:
+            readable_files.append(vault_file)
+    markdown_files = [path for path in readable_files if path.suffix == ".md"]
+
+    findings = [
+        *inventory_findings,
+        *read_error_findings,
+        *check_vault_broken_wikilinks(vault_root, markdown_files),
+        *check_vault_index_coverage(vault_root, markdown_files),
+        *check_raw_file_sizes(vault_root, readable_files, wiki_root=vault_root),
+        *check_secret_like_content(vault_root, readable_files),
+        *check_stale_pages(
+            vault_root, markdown_files, stale_after_days=VAULT_STALE_AFTER_DAYS
+        ),
+    ]
+    render_findings(findings, args.json, clean_message="No issues found in the vault.")
+    return lint_exit_code(findings)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="project-wiki",
@@ -1998,6 +2255,17 @@ def build_parser():
         action="store_true",
         help="skip root AGENTS.md Project LLM Wiki section patching",
     )
+    init.add_argument(
+        "--profile",
+        choices=("project", "vault"),
+        default="project",
+        help="wiki profile to initialize; 'vault' targets an Obsidian vault via --root",
+    )
+    init.add_argument(
+        "--root",
+        default=None,
+        help="target root for the vault profile (required with --profile vault)",
+    )
     init.set_defaults(func=run_init)
 
     install = subcommands.add_parser(
@@ -2027,6 +2295,17 @@ def build_parser():
 
     lint = subcommands.add_parser("lint", help="lint .llm-wiki structure")
     lint.add_argument("--json", action="store_true", help="render lint findings as JSON")
+    lint.add_argument(
+        "--profile",
+        choices=("project", "vault"),
+        default="project",
+        help="wiki profile to lint; 'vault' targets an Obsidian vault via --root",
+    )
+    lint.add_argument(
+        "--root",
+        default=None,
+        help="target root for the vault profile (required with --profile vault)",
+    )
     lint.set_defaults(func=run_lint)
 
     query = subcommands.add_parser(

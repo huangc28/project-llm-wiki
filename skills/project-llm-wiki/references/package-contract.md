@@ -31,3 +31,5 @@ Install does not mutate PeasyDeal repositories, parent workspaces, or any projec
 `project-wiki install` may create, update, replace, or remove package-owned copied directories in a Codex skills directory.
 
 It must preserve the repo-local source-of-truth contract and avoid writing project wiki content outside the target repository's actual git root.
+
+The `vault` profile is the one deliberate exception to Git-root scoping. `project-wiki init --profile vault` and `project-wiki lint --profile vault` operate on the user-supplied `--root` directory (an Obsidian vault, which is addressed directly rather than via a resolved Git root). They still write only inside that explicit `--root` and never mutate a resolved Git root, a parent workspace, or any path outside the given vault.
