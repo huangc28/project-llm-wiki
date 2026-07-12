@@ -19,6 +19,21 @@ SKILL_NAMES = (
 MARKER_FILE = ".project-llm-wiki-install.json"
 
 
+def snapshot_tree(root: Path):
+    """Content snapshot of a directory tree, or None if it does not exist.
+
+    Maps every descendant path (relative to root) to its file bytes; directories
+    map to None. Comparing two snapshots detects any create/delete/modify.
+    """
+    if not root.exists():
+        return None
+    snapshot = {}
+    for path in sorted(root.rglob("*")):
+        rel = str(path.relative_to(root))
+        snapshot[rel] = path.read_bytes() if path.is_file() else None
+    return snapshot
+
+
 class ProjectWikiInstallTests(unittest.TestCase):
     def run_install(self, *args):
         return subprocess.run(
@@ -154,11 +169,16 @@ class ProjectWikiInstallTests(unittest.TestCase):
             target = self.make_target(Path(tmp))
             agents_path = ROOT / "AGENTS.md"
             agents_before = agents_path.read_bytes()
+            # Install must not create OR modify the repo's own .llm-wiki/. Snapshot
+            # it before/after rather than asserting absolute absence — the repo now
+            # commits its own .llm-wiki/ skeleton at HEAD.
+            wiki_path = ROOT / ".llm-wiki"
+            wiki_before = snapshot_tree(wiki_path)
 
             result = self.run_install("--target", str(target))
 
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertFalse((ROOT / ".llm-wiki").exists())
+            self.assertEqual(wiki_before, snapshot_tree(wiki_path))
             self.assertEqual(agents_before, agents_path.read_bytes())
 
 
