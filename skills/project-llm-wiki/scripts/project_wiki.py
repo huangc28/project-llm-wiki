@@ -53,6 +53,18 @@ INSTALL_SKILL_NAMES = (
     "project-wiki-lint",
     "project-wiki-query",
     "project-wiki-ingest",
+    # Vault wiki skills consolidated into this repo: the maintenance trio +
+    # wiki-init, plus the six thinking aids. Managed as marker-owned installs.
+    "vault-ingest",
+    "vault-query",
+    "vault-lint",
+    "vault-wiki-init",
+    "vault-today",
+    "vault-trace",
+    "vault-challenge",
+    "vault-connect",
+    "vault-ghost",
+    "vault-ideas",
 )
 INSTALL_MARKER_FILE = ".project-llm-wiki-install.json"
 INSTALL_MARKER_PACKAGE = "project-llm-wiki"

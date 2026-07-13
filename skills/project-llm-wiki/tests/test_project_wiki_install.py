@@ -15,6 +15,17 @@ SKILL_NAMES = (
     "project-wiki-lint",
     "project-wiki-query",
     "project-wiki-ingest",
+    # Vault skills consolidated into this repo (see test_vault_skills_present.py).
+    "vault-ingest",
+    "vault-query",
+    "vault-lint",
+    "vault-wiki-init",
+    "vault-today",
+    "vault-trace",
+    "vault-challenge",
+    "vault-connect",
+    "vault-ghost",
+    "vault-ideas",
 )
 MARKER_FILE = ".project-llm-wiki-install.json"
 
